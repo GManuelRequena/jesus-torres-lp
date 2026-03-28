@@ -1004,6 +1004,10 @@
         <input id="f-nombre" type="text" placeholder="Ej: Laura Martínez" required />
       </div>
       <div class="form-group">
+        <label>Tu email *</label>
+        <input id="f-email" type="email" placeholder="Ej: laura@gmail.com" required />
+      </div>
+      <div class="form-group">
         <label>¿Qué estás buscando? *</label>
         <select id="f-objetivo" required>
           <option value="">Seleccioná una opción...</option>
@@ -1070,19 +1074,28 @@
     });
 
     // WhatsApp form handler
-    function handleForm(e) {
+    async function handleForm(e) {
       e.preventDefault();
 
       const nombre   = document.getElementById('f-nombre').value.trim();
+      const email    = document.getElementById('f-email').value.trim();
       const objetivo = document.getElementById('f-objetivo').value;
       const nivel    = document.getElementById('f-nivel').value;
       const extra    = document.getElementById('f-extra').value.trim();
 
-      if (!nombre || !objetivo) return;
+      if (!nombre || !email || !objetivo) return;
+
+      // Guardar contacto en Brevo
+      fetch('/.netlify/functions/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, objetivo }),
+      }).catch(() => {}); // silencioso — no bloquea el flujo
 
       // Armar el mensaje que va a llegar por WhatsApp
       let msg = `¡Hola Jesús! Me contacto desde tu web 👋\n\n`;
       msg += `*Nombre:* ${nombre}\n`;
+      msg += `*Email:* ${email}\n`;
       msg += `*Objetivo:* ${objetivo}\n`;
       if (nivel)  msg += `*Nivel actual:* ${nivel}\n`;
       if (extra)  msg += `*Info adicional:* ${extra}\n`;
