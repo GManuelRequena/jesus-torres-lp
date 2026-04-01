@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Portal de Alumnos — Jesús Torres</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="portal.css"/>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">Jesús Torres · EP</a>
+    <span class="nav-badge">Portal</span>
+  </nav>
+
+  <main class="login-page">
+    <div class="login-card fade-in">
+      <span class="login-icon">🏋️</span>
+      <div class="login-label">Área exclusiva</div>
+      <div class="login-title">PORTAL DE<br/><span>ALUMNOS</span></div>
+      <p class="login-subtitle">
+        Accedé a tu rutina personalizada.<br/>
+        Usá el email y contraseña que te compartió Jesús.
+      </p>
+      <button class="btn-login" id="btn-login">Iniciar sesión</button>
+      <a href="/" class="login-back">← Volver al inicio</a>
+    </div>
+  </main>
+
+  <script>
+    netlifyIdentity.init();
+
+    // Si ya hay sesión activa, ir directo al dashboard
+    netlifyIdentity.on('init', user => {
+      if (user) window.location.href = '/portal/dashboard.html';
+    });
+
+    // Al loguear exitosamente, ir al dashboard
+    netlifyIdentity.on('login', () => {
+      netlifyIdentity.close();
+      window.location.href = '/portal/dashboard.html';
+    });
+
+    document.getElementById('btn-login').addEventListener('click', () => {
+      netlifyIdentity.open('login');
+    });
+  </script>
+
+</body>
+</html>
