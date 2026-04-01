@@ -1,0 +1,36 @@
+name: Tag Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Crear tag de release
+        run: |
+          DATE=$(date +'%Y.%m.%d')
+          BASE_TAG="v${DATE}"
+
+          # Si ya existe el tag para hoy, agregar sufijo incremental
+          TAG="$BASE_TAG"
+          N=1
+          while git rev-parse "$TAG" >/dev/null 2>&1; do
+            N=$((N + 1))
+            TAG="${BASE_TAG}-${N}"
+          done
+
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "Tag creado: $TAG"
