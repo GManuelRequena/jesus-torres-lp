@@ -9,6 +9,10 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
 jobs:
   release-pr:
     runs-on: ubuntu-latest
@@ -33,9 +37,9 @@ jobs:
             exit 0
           fi
 
-          FEATS=$(echo "$COMMITS"  | grep "^feat"                    | sed 's/^feat[^:]*: //' | sed 's/^/- /')
-          FIXES=$(echo "$COMMITS"  | grep "^fix"                     | sed 's/^fix[^:]*: //'  | sed 's/^/- /')
-          OTHERS=$(echo "$COMMITS" | grep -v "^feat\|^fix\|^chore"   | sed 's/^/- /')
+          FEATS=$(echo "$COMMITS"  | grep "^feat"          | sed 's/^feat[^:]*: //' | sed 's/^/- /' || true)
+          FIXES=$(echo "$COMMITS"  | grep "^fix"           | sed 's/^fix[^:]*: //'  | sed 's/^/- /' || true)
+          OTHERS=$(echo "$COMMITS" | grep -v "^feat\|^fix" | sed 's/^/- /'          || true)
 
           DATE=$(date +'%Y-%m-%d')
           BODY="## Release ${DATE}"$'\n\n'
