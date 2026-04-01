@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mi Rutina — Jesús Torres</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="portal.css"/>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">Jesús Torres · EP</a>
+    <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
+  </nav>
+
+  <main class="dashboard-page" id="dashboard" style="display:none">
+
+    <div class="dashboard-header fade-in">
+      <div class="dashboard-greeting">Bienvenido/a</div>
+      <div class="dashboard-title">HOLA, <span id="user-name">...</span></div>
+      <p class="dashboard-subtitle">Aquí encontrás tu rutina actualizada por Jesús.</p>
+    </div>
+
+    <div class="routine-card fade-in" id="routine-card">
+      <div class="routine-card-header">
+        <div class="routine-card-dot"></div>
+        <div class="routine-card-title">Tu Rutina</div>
+      </div>
+      <div id="routine-body">
+        <!-- contenido dinámico -->
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const WA_NUMBER = '5492657234696'; // reemplazar con número real
+
+    netlifyIdentity.init();
+
+    netlifyIdentity.on('init', user => {
+      if (!user) {
+        window.location.href = '/portal/';
+        return;
+      }
+      const roles = user.app_metadata?.roles || [];
+      if (!roles.includes('alumno') && !roles.includes('admin')) {
+        showAccessDenied();
+        return;
+      }
+      renderDashboard(user);
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      netlifyIdentity.logout();
+    });
+
+    netlifyIdentity.on('logout', () => {
+      window.location.href = '/portal/';
+    });
+
+    function showAccessDenied() {
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('routine-card').style.display = 'none';
+      document.querySelector('.dashboard-header').innerHTML = `
+        <div class="empty-state" style="padding: 4rem 0">
+          <div class="empty-icon">🔒</div>
+          <div class="empty-title">Sin acceso</div>
+          <p class="empty-text">Tu cuenta no tiene acceso al portal todavía.<br/>Contactá a Jesús para activarla.</p>
+          <a class="empty-wa" href="https://wa.me/${WA_NUMBER}" target="_blank" rel="noopener noreferrer">💬 Escribir por WhatsApp</a>
+        </div>`;
+    }
+
+    async function renderDashboard(user) {
+      // Mostrar nombre del alumno
+      const fullName = user.user_metadata?.full_name || '';
+      const nombre   = fullName.split(' ')[0] || user.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre.toUpperCase();
+      document.getElementById('dashboard').style.display = 'block';
+
+      const body = document.getElementById('routine-body');
+
+      // Mostrar spinner mientras carga routines.json
+      body.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Cargando tu rutina...</span></div>`;
+
+      let routineUrl = null;
+      try {
+        const res = await fetch('/routines.json');
+        const routines = await res.json();
+        routineUrl = routines[user.email] || null;
+      } catch (_) {
+        // Si falla el fetch, mostramos el empty state igual
+      }
+
+      if (!routineUrl) {
+        body.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">Rutina en preparación</div>
+            <p class="empty-text">
+              Jesús todavía no cargó tu rutina.<br/>
+              Escribile para coordinar.
+            </p>
+            <a class="empty-wa" href="https://wa.me/${WA_NUMBER}" target="_blank" rel="noopener noreferrer">
+              💬 Escribir por WhatsApp
+            </a>
+          </div>`;
+        return;
+      }
+
+      // Construir URL de preview a partir de cualquier URL de Google Docs
+      const match = routineUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const embedUrl = match
+        ? 'https://docs.google.com/document/d/' + match[1] + '/preview'
+        : routineUrl;
+
+      body.innerHTML = '';
+
+      const loading = document.createElement('div');
+      loading.className = 'loading-state';
+      loading.id = 'loading';
+      loading.innerHTML = '<div class="spinner"></div><span>Cargando tu rutina...</span>';
+
+      const iframe = document.createElement('iframe');
+      iframe.className = 'routine-iframe';
+      iframe.id = 'routine-iframe';
+      iframe.style.display = 'none';
+      iframe.title = 'Tu rutina de entrenamiento';
+      iframe.src = embedUrl;
+
+      body.appendChild(loading);
+      body.appendChild(iframe);
+
+      iframe.addEventListener('load', () => {
+        loading.style.display = 'none';
+        iframe.style.display  = 'block';
+      });
+    }
+  </script>
+
+</body>
+</html>

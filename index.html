@@ -23,6 +23,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="styles.css"/>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body>
 
@@ -36,9 +37,12 @@
       <li><a href="#testimonios">Testimonios</a></li>
       <li><a href="#contacto" class="nav-cta">Contacto</a></li>
     </ul>
-    <button class="nav-burger" id="nav-burger" aria-label="Menú">
-      <span></span><span></span><span></span>
-    </button>
+    <div class="nav-right">
+      <a href="/portal/" class="nav-portal">Alumnos</a>
+      <button class="nav-burger" id="nav-burger" aria-label="Menú">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
   </nav>
 
   <!-- HERO -->
@@ -413,6 +417,18 @@
         btn.style.color = '';
         e.target.reset();
       }, 3500);
+    }
+
+    // Netlify Identity — maneja tokens de invite/recovery que aterrizan en la raíz
+    if (window.netlifyIdentity) {
+      netlifyIdentity.init();
+      netlifyIdentity.on('init', user => {
+        if (!user) {
+          netlifyIdentity.on('login', () => {
+            window.location.href = '/portal/dashboard.html';
+          });
+        }
+      });
     }
 
     // Menú hamburguesa

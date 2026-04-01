@@ -60,6 +60,27 @@ nav {
 }
 .nav-cta:hover { background: var(--orange); color: #fff !important; }
 
+/* ── NAV RIGHT (portal + burger) ── */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.nav-portal {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 6px 14px;
+  border-radius: 2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.nav-portal:hover { color: var(--yellow); border-color: rgba(255,224,0,0.4); }
+
 /* ── HAMBURGER ── */
 .nav-burger {
   display: none;
