@@ -169,16 +169,19 @@ function parsePrincipalLine(line, num) {
   // Identify each part by content
   const serepRe  = /^(\d+)\s*[xX×]\s*(\d+)(["""]?)\s*(por\s+lado|pasos)?$/i;
   const pesoRe   = /^(\d+(?:[.,]\d+)?)\s*(kg|lingotes?)$/i;
+  const ytRe     = /^https?:\/\/\S+/;
 
-  let nombre = null;
-  let series = null;
-  let reps   = null;
-  let unidad = 'reps';
-  let nota   = null;
-  let peso   = null;
+  let nombre     = null;
+  let series     = null;
+  let reps       = null;
+  let unidad     = 'reps';
+  let nota       = null;
+  let peso       = null;
   let pesoUnidad = null;
+  let youtubeUrl = null;
 
   for (const part of parts) {
+    if (ytRe.test(part)) { youtubeUrl = part; continue; }
     const sRep = serepRe.exec(part);
     if (sRep) {
       series = parseInt(sRep[1], 10);
@@ -189,16 +192,15 @@ function parsePrincipalLine(line, num) {
     }
     const spes = pesoRe.exec(part);
     if (spes) {
-      peso      = parseFloat(spes[1].replace(',', '.'));
+      peso       = parseFloat(spes[1].replace(',', '.'));
       pesoUnidad = /kg/i.test(spes[2]) ? 'kg' : 'lingotes';
       continue;
     }
-    // Anything else is the exercise name (first unmatched part)
     if (!nombre) nombre = part;
   }
 
   if (!nombre || series === null) return null;
-  return { num, nombre, series, reps, unidad, peso, pesoUnidad, nota };
+  return { num, nombre, series, reps, unidad, peso, pesoUnidad, nota, youtubeUrl };
 }
 
 // ── Periodización ─────────────────────────────────────────────────────────────

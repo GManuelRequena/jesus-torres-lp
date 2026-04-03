@@ -196,8 +196,9 @@
       const cards = items.map(ex => {
         const num    = String(ex.num).padStart(2, '0');
         const serRep = `${ex.series}×${ex.reps}${ex.unidad === 'seg' ? '"' : ''}`;
-        const peso   = ex.peso !== null ? `<span class="badge badge--peso">${ex.peso}kg</span>` : '';
+        const peso   = ex.peso !== null ? `<span class="badge badge--peso">${ex.peso}${ex.pesoUnidad === 'lingotes' ? ' ling.' : 'kg'}</span>` : '';
         const nota   = ex.nota ? `<span class="ex-nota">${ex.nota}</span>` : '';
+        const video  = ex.youtubeUrl ? `<a class="btn-video" href="${ex.youtubeUrl}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>` : '';
         return `
           <div class="ex-card ex-card--principal">
             <span class="ex-num">${num}</span>
@@ -205,6 +206,7 @@
             <div class="ex-badges">
               <span class="badge badge--serep">${serRep}</span>
               ${peso}
+              ${video}
             </div>
           </div>`;
       }).join('');
