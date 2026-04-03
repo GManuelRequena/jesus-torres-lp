@@ -77,27 +77,27 @@
     }
 
     async function renderDashboard(user) {
-      // Mostrar nombre del alumno
       const fullName = user.user_metadata?.full_name || '';
       const nombre   = fullName.split(' ')[0] || user.email.split('@')[0];
       document.getElementById('user-name').textContent = nombre.toUpperCase();
       document.getElementById('dashboard').style.display = 'block';
 
       const body = document.getElementById('routine-body');
-
-      // Mostrar spinner mientras carga routines.json
       body.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Cargando tu rutina...</span></div>`;
 
-      let routineUrl = null;
+      // 1. Obtener docId del alumno desde routines.json
+      let docId = null;
       try {
         const res = await fetch('/routines.json');
         const routines = await res.json();
-        routineUrl = routines[user.email] || null;
-      } catch (_) {
-        // Si falla el fetch, mostramos el empty state igual
-      }
+        const docUrl = routines[user.email] || null;
+        if (docUrl) {
+          const match = docUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          docId = match ? match[1] : null;
+        }
+      } catch (_) {}
 
-      if (!routineUrl) {
+      if (!docId) {
         body.innerHTML = `
           <div class="empty-state">
             <div class="empty-icon">📋</div>
@@ -113,32 +113,133 @@
         return;
       }
 
-      // Construir URL de preview a partir de cualquier URL de Google Docs
-      const match = routineUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      const embedUrl = match
-        ? 'https://docs.google.com/document/d/' + match[1] + '/preview'
-        : routineUrl;
+      // 2. Fetchear y parsear la rutina via Netlify Function
+      let routine = null;
+      try {
+        const res = await fetch(`/.netlify/functions/routine?docId=${docId}`);
+        if (!res.ok) throw new Error(res.status);
+        routine = await res.json();
+      } catch (_) {}
 
-      body.innerHTML = '';
+      if (!routine || !routine.dias?.length) {
+        body.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-title">No se pudo cargar</div>
+            <p class="empty-text">
+              Hubo un error al leer tu rutina.<br/>
+              Intentá recargar la página.
+            </p>
+          </div>`;
+        return;
+      }
 
-      const loading = document.createElement('div');
-      loading.className = 'loading-state';
-      loading.id = 'loading';
-      loading.innerHTML = '<div class="spinner"></div><span>Cargando tu rutina...</span>';
+      // 3. Renderizar
+      body.innerHTML = renderRoutine(routine);
+      initTabs();
+    }
 
-      const iframe = document.createElement('iframe');
-      iframe.className = 'routine-iframe';
-      iframe.id = 'routine-iframe';
-      iframe.style.display = 'none';
-      iframe.title = 'Tu rutina de entrenamiento';
-      iframe.src = embedUrl;
+    // ── Render ────────────────────────────────────────────────────────────────
 
-      body.appendChild(loading);
-      body.appendChild(iframe);
+    function renderRoutine(routine) {
+      const tabs = routine.dias.map((dia, i) =>
+        `<button class="tab-btn${i === 0 ? ' active' : ''}" data-tab="${i}">${dia.label.toUpperCase()}</button>`
+      ).join('');
 
-      iframe.addEventListener('load', () => {
-        loading.style.display = 'none';
-        iframe.style.display  = 'block';
+      const panels = routine.dias.map((dia, i) =>
+        `<div class="tab-panel${i === 0 ? ' active' : ''}" data-panel="${i}">
+          ${renderMovilidad(dia.movilidad)}
+          ${renderCalor(dia.calor)}
+          ${renderPrincipal(dia.principal)}
+        </div>`
+      ).join('');
+
+      const periodo = renderPeriodizacion(routine.periodizacion);
+
+      return `
+        <div class="tabs">${tabs}</div>
+        <div class="tab-panels">${panels}</div>
+        ${periodo}
+      `;
+    }
+
+    function renderMovilidad(items) {
+      if (!items.length) return '';
+      const cards = items.map(ex => `
+        <div class="ex-card ex-card--movilidad">
+          <div class="ex-movilidad-nombre">${ex.nombre}</div>
+          ${ex.youtubeUrl
+            ? `<a class="btn-video" href="${ex.youtubeUrl}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>`
+            : ''}
+        </div>`).join('');
+      return `
+        <div class="routine-section">
+          <div class="section-label">Movilidad Articular</div>
+          <div class="ex-list">${cards}</div>
+        </div>`;
+    }
+
+    function renderCalor(items) {
+      if (!items.length) return '';
+      const pills = items.map(ex =>
+        `<span class="calor-pill">${ex.nombre}</span>`
+      ).join('');
+      return `
+        <div class="routine-section">
+          <div class="section-label">Entrada en Calor <span class="section-sub">2×8</span></div>
+          <div class="calor-pills">${pills}</div>
+        </div>`;
+    }
+
+    function renderPrincipal(items) {
+      if (!items.length) return '';
+      const cards = items.map(ex => {
+        const num    = String(ex.num).padStart(2, '0');
+        const serRep = `${ex.series}×${ex.reps}${ex.unidad === 'seg' ? '"' : ''}`;
+        const peso   = ex.peso !== null ? `<span class="badge badge--peso">${ex.peso}kg</span>` : '';
+        const nota   = ex.nota ? `<span class="ex-nota">${ex.nota}</span>` : '';
+        return `
+          <div class="ex-card ex-card--principal">
+            <span class="ex-num">${num}</span>
+            <span class="ex-nombre">${ex.nombre}${nota}</span>
+            <div class="ex-badges">
+              <span class="badge badge--serep">${serRep}</span>
+              ${peso}
+            </div>
+          </div>`;
+      }).join('');
+      return `
+        <div class="routine-section">
+          <div class="section-label">Parte Principal</div>
+          <div class="ex-list ex-list--principal">${cards}</div>
+        </div>`;
+    }
+
+    function renderPeriodizacion(items) {
+      if (!items.length) return '';
+      const rows = items.map((s, i) => `
+        <div class="periodo-row${i === 0 ? ' periodo-row--active' : ''}">
+          <span class="periodo-semana">SEM ${s.semana ?? i + 1}</span>
+          <span class="periodo-desc">${s.descripcion}</span>
+        </div>`).join('');
+      return `
+        <div class="routine-section routine-section--periodo">
+          <div class="section-label">Periodización</div>
+          <div class="periodo-table">${rows}</div>
+        </div>`;
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+
+    function initTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = btn.dataset.tab;
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.querySelector(`.tab-panel[data-panel="${idx}"]`).classList.add('active');
+        });
       });
     }
   </script>
