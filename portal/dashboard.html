@@ -85,38 +85,25 @@
       const body = document.getElementById('routine-body');
       body.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Cargando tu rutina...</span></div>`;
 
-      // 1. Obtener docId del alumno desde routines.json
-      let docId = null;
-      try {
-        const res = await fetch('/routines.json');
-        const routines = await res.json();
-        const docUrl = routines[user.email] || null;
-        if (docUrl) {
-          const match = docUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          docId = match ? match[1] : null;
-        }
-      } catch (_) {}
-
-      if (!docId) {
-        body.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <div class="empty-title">Rutina en preparación</div>
-            <p class="empty-text">
-              Jesús todavía no cargó tu rutina.<br/>
-              Escribile para coordinar.
-            </p>
-            <a class="empty-wa" href="https://wa.me/${WA_NUMBER}" target="_blank" rel="noopener noreferrer">
-              💬 Escribir por WhatsApp
-            </a>
-          </div>`;
-        return;
-      }
-
-      // 2. Fetchear y parsear la rutina via Netlify Function
+      // Fetchear y parsear la rutina via Netlify Function (lookup por email)
       let routine = null;
       try {
-        const res = await fetch(`/.netlify/functions/routine?docId=${docId}`);
+        const res = await fetch(`/.netlify/functions/routine?email=${encodeURIComponent(user.email)}`);
+        if (res.status === 404) {
+          body.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📋</div>
+              <div class="empty-title">Rutina en preparación</div>
+              <p class="empty-text">
+                Jesús todavía no cargó tu rutina.<br/>
+                Escribile para coordinar.
+              </p>
+              <a class="empty-wa" href="https://wa.me/${WA_NUMBER}" target="_blank" rel="noopener noreferrer">
+                💬 Escribir por WhatsApp
+              </a>
+            </div>`;
+          return;
+        }
         if (!res.ok) throw new Error(res.status);
         routine = await res.json();
       } catch (_) {}

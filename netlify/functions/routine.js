@@ -24,9 +24,21 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const docId = event.queryStringParameters?.docId;
-  if (!docId) {
-    return { statusCode: 400, body: 'Missing docId' };
+  const { docId, email } = event.queryStringParameters || {};
+
+  // Resolve docId: either passed directly or looked up from ROUTINES_MAP env var
+  let resolvedDocId = docId;
+  if (!resolvedDocId && email) {
+    try {
+      const map = JSON.parse(process.env.ROUTINES_MAP || '{}');
+      resolvedDocId = map[email] || null;
+    } catch {
+      return { statusCode: 500, body: 'Invalid ROUTINES_MAP config' };
+    }
+  }
+
+  if (!resolvedDocId) {
+    return { statusCode: 404, body: 'No routine found' };
   }
 
   let html;
