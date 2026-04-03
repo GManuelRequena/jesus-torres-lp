@@ -499,6 +499,8 @@ nav {
 .periodo-desc {
   font-size: 0.82rem;
   color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .periodo-row--active .periodo-desc { color: var(--light); }
 
