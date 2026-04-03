@@ -220,7 +220,7 @@
     function renderPeriodizacion(items) {
       if (!items.length) return '';
       const rows = items.map((s, i) => `
-        <div class="periodo-row${i === 0 ? ' periodo-row--active' : ''}">
+        <div class="periodo-row">
           <span class="periodo-semana">SEM ${s.semana ?? i + 1}</span>
           <span class="periodo-desc">${s.descripcion}</span>
         </div>`).join('');
