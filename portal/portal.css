@@ -474,35 +474,34 @@ nav {
 .periodo-table {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 .periodo-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   border-radius: 2px;
-}
-.periodo-row--active {
-  background: rgba(255,224,0,0.06);
-  border-left: 2px solid var(--yellow);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
 }
 .periodo-semana {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  color: var(--muted);
+  letter-spacing: 0.08em;
+  color: var(--dark);
+  background: var(--orange);
+  padding: 2px 7px;
+  border-radius: 2px;
   flex-shrink: 0;
-  width: 4.5ch;
 }
-.periodo-row--active .periodo-semana { color: var(--yellow); }
 .periodo-desc {
   font-size: 0.82rem;
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--light);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.periodo-row--active .periodo-desc { color: var(--light); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
