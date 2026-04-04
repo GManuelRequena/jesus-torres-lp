@@ -44,7 +44,7 @@ exports.handler = async (event) => {
   let html;
   try {
     const res = await fetch(
-      `https://docs.google.com/document/d/${docId}/export?format=html`
+      `https://docs.google.com/document/d/${resolvedDocId}/export?format=html`
     );
     if (!res.ok) {
       return { statusCode: 502, body: `Google Docs error: ${res.status}` };
