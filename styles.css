@@ -598,6 +598,9 @@ footer {
 }
 
 footer p { font-size: 0.8rem; color: #555; }
+.footer-dev { margin-top: 1rem; font-size: 0.72rem; color: #333; }
+.footer-dev a { color: #444; text-decoration: none; transition: color 0.2s; }
+.footer-dev a:hover { color: var(--yellow); }
 
 /* ── STRIPE MARQUEE ── */
 .marquee-wrap {
