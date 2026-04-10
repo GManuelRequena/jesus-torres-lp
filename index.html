@@ -425,6 +425,11 @@
       netlifyIdentity.init();
       netlifyIdentity.on('init', user => {
         if (!user) {
+          // Abrir widget automáticamente si hay token de invitación o recuperación
+          const hash = window.location.hash;
+          if (hash.includes('invite_token') || hash.includes('recovery_token')) {
+            netlifyIdentity.open();
+          }
           netlifyIdentity.on('login', () => {
             window.location.href = '/portal/dashboard.html';
           });
