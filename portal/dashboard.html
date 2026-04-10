@@ -159,8 +159,8 @@
       const cards = items.map(ex => `
         <div class="ex-card ex-card--movilidad">
           <div class="ex-movilidad-nombre">${esc(ex.nombre)}</div>
-          ${ex.youtubeUrl
-            ? `<a class="btn-video" href="${ex.youtubeUrl}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>`
+          ${ex.youtubeUrl?.startsWith('https://')
+            ? `<a class="btn-video" href="${esc(ex.youtubeUrl)}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>`
             : ''}
         </div>`).join('');
       return `
@@ -189,7 +189,7 @@
         const serRep = `${ex.series}×${ex.reps}${ex.unidad === 'seg' ? '"' : ''}`;
         const peso   = ex.peso !== null ? `<span class="badge badge--peso">${ex.peso}${ex.pesoUnidad === 'lingotes' ? ' ling.' : 'kg'}</span>` : '';
         const nota   = ex.nota ? `<span class="ex-nota">${esc(ex.nota)}</span>` : '';
-        const video  = ex.youtubeUrl ? `<a class="btn-video" href="${ex.youtubeUrl}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>` : '';
+        const video  = ex.youtubeUrl?.startsWith('https://') ? `<a class="btn-video" href="${esc(ex.youtubeUrl)}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>` : '';
         return `
           <div class="ex-card ex-card--principal">
             <span class="ex-num">${num}</span>
@@ -213,7 +213,7 @@
       const rows = items.map((s, i) => `
         <div class="periodo-row">
           <span class="periodo-semana">SEM ${s.semana ?? i + 1}</span>
-          <span class="periodo-desc">${s.descripcion}</span>
+          <span class="periodo-desc">${esc(s.descripcion)}</span>
         </div>`).join('');
       return `
         <div class="routine-section routine-section--periodo">
