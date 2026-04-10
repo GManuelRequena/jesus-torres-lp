@@ -15,7 +15,10 @@
 
   <nav>
     <a href="/" class="nav-logo">Jesús Torres · EP</a>
-    <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
+    <div style="display:flex;align-items:center;gap:0.75rem">
+      <a href="/portal/admin.html" class="btn-logout" id="btn-admin" style="display:none;text-decoration:none">Admin</a>
+      <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
+    </div>
   </nav>
 
   <main class="dashboard-page" id="dashboard" style="display:none">
@@ -53,6 +56,9 @@
         showAccessDenied();
         return;
       }
+      if (roles.includes('admin')) {
+        document.getElementById('btn-admin').style.display = 'inline-flex';
+      }
       renderDashboard(user);
     });
 
@@ -85,10 +91,13 @@
       const body = document.getElementById('routine-body');
       body.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Cargando tu rutina...</span></div>`;
 
-      // Fetchear y parsear la rutina via Netlify Function (lookup por email)
+      // Fetchear y parsear la rutina via Netlify Function (docId desde JWT)
       let routine = null;
       try {
-        const res = await fetch(`/.netlify/functions/routine?email=${encodeURIComponent(user.email)}`);
+        const token = await user.jwt();
+        const res = await fetch('/.netlify/functions/routine', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (res.status === 404) {
           body.innerHTML = `
             <div class="empty-state">

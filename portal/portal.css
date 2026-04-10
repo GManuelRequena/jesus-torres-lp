@@ -503,6 +503,126 @@ nav {
   letter-spacing: 0.06em;
 }
 
+/* ── ADMIN ── */
+.admin-section {
+  background: var(--gray);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.admin-section-header {
+  margin-bottom: 1.2rem;
+}
+
+.student-card {
+  background: var(--gray);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.student-card:hover { border-color: rgba(255,224,0,0.15); }
+
+.student-card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.student-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  color: var(--yellow);
+}
+
+.student-email {
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.student-fields {
+  padding: 1.2rem 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem 1.2rem;
+}
+
+.student-card-footer {
+  padding: 0.75rem 1.5rem 1rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.field-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.field-group--full { grid-column: 1 / -1; }
+
+.field-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field-input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 2px;
+  color: var(--light);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.field-input:focus {
+  outline: none;
+  border-color: rgba(255,224,0,0.4);
+}
+.field-input::placeholder { color: #444; }
+.field-input--short { max-width: 120px; }
+
+.invite-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem 1.2rem;
+  align-items: end;
+}
+
+.btn-save {
+  background: var(--yellow);
+  color: var(--dark);
+  font-family: 'Barlow', sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+.btn-save:hover { background: var(--orange); color: #fff; }
+.btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.form-msg {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+.form-msg--ok  { color: #4caf50; }
+.form-msg--err { color: var(--red); }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .login-card { padding: 2rem 1.4rem; }
@@ -511,4 +631,8 @@ nav {
   .routine-section { padding: 1.2rem 1rem; }
   .ex-card--principal { flex-wrap: wrap; }
   .ex-badges { margin-left: auto; }
+  .student-fields { grid-template-columns: 1fr; }
+  .invite-form { grid-template-columns: 1fr; }
+  .student-card-header { flex-direction: column; gap: 0.2rem; }
+  .field-input--short { max-width: 100%; }
 }
