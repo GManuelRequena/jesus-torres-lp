@@ -60,7 +60,7 @@ exports.handler = async (event) => {
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=300',
+      'Cache-Control': 'private, no-store',
     },
     body: JSON.stringify(routine),
   };
@@ -76,20 +76,18 @@ function htmlToLines(html) {
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
     .replace(/&ldquo;|&rdquo;/g, '"')
     .replace(/&lsquo;|&rsquo;/g, "'")
     .replace(/&[Aa]acute;/g, 'á')
     .replace(/&[Ee]acute;/g, 'é')
-    .replace(/&[Ii]acute;/g, 'í')
+    .replace(/&iacute;/g, 'í')
     .replace(/&[Oo]acute;/g, 'ó')
     .replace(/&[Uu]acute;/g, 'ú')
     .replace(/&[Nn]tilde;/g, 'ñ')
     .replace(/&[Uu]uml;/g, 'ü')
-    .replace(/&[Ii]acute;/g, 'Í')
+    .replace(/&Iacute;/g, 'Í')
     .replace(/&#\d+;/g, '');
 
   return decoded.split('\n').map(l => l.trim()).filter(l => l.length > 0);

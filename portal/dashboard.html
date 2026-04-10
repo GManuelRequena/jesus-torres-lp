@@ -128,6 +128,10 @@
 
     // ── Render ────────────────────────────────────────────────────────────────
 
+    function esc(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     function renderRoutine(routine) {
       const tabs = routine.dias.map((dia, i) =>
         `<button class="tab-btn${i === 0 ? ' active' : ''}" data-tab="${i}">${dia.label.toUpperCase()}</button>`
@@ -154,7 +158,7 @@
       if (!items.length) return '';
       const cards = items.map(ex => `
         <div class="ex-card ex-card--movilidad">
-          <div class="ex-movilidad-nombre">${ex.nombre}</div>
+          <div class="ex-movilidad-nombre">${esc(ex.nombre)}</div>
           ${ex.youtubeUrl
             ? `<a class="btn-video" href="${ex.youtubeUrl}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>`
             : ''}
@@ -169,7 +173,7 @@
     function renderCalor(items) {
       if (!items.length) return '';
       const pills = items.map(ex =>
-        `<span class="calor-pill">${ex.nombre}</span>`
+        `<span class="calor-pill">${esc(ex.nombre)}</span>`
       ).join('');
       return `
         <div class="routine-section">
@@ -184,12 +188,12 @@
         const num    = String(ex.num).padStart(2, '0');
         const serRep = `${ex.series}×${ex.reps}${ex.unidad === 'seg' ? '"' : ''}`;
         const peso   = ex.peso !== null ? `<span class="badge badge--peso">${ex.peso}${ex.pesoUnidad === 'lingotes' ? ' ling.' : 'kg'}</span>` : '';
-        const nota   = ex.nota ? `<span class="ex-nota">${ex.nota}</span>` : '';
+        const nota   = ex.nota ? `<span class="ex-nota">${esc(ex.nota)}</span>` : '';
         const video  = ex.youtubeUrl ? `<a class="btn-video" href="${ex.youtubeUrl}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>` : '';
         return `
           <div class="ex-card ex-card--principal">
             <span class="ex-num">${num}</span>
-            <span class="ex-nombre">${ex.nombre}${nota}</span>
+            <span class="ex-nombre">${esc(ex.nombre)}${nota}</span>
             <div class="ex-badges">
               <span class="badge badge--serep">${serRep}</span>
               ${peso}
