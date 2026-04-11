@@ -422,12 +422,13 @@
 
     // Netlify Identity — maneja tokens de invite/recovery que aterrizan en la raíz
     if (window.netlifyIdentity) {
+      // Capturar hash ANTES de que netlifyIdentity.init() lo limpie de la URL
+      const initialHash = window.location.hash;
       netlifyIdentity.init();
       netlifyIdentity.on('init', user => {
         if (!user) {
-          // Abrir widget automáticamente si hay token de invitación o recuperación
-          const hash = window.location.hash;
-          if (hash.includes('invite_token') || hash.includes('recovery_token')) {
+          // Abrir widget si había token de invitación o recuperación
+          if (initialHash.includes('invite_token') || initialHash.includes('recovery_token')) {
             netlifyIdentity.open();
           }
           netlifyIdentity.on('login', () => {
