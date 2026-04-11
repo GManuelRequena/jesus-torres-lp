@@ -33,13 +33,23 @@
   </main>
 
   <script>
+    // Capturar hash ANTES de que init() lo consuma
+    const initialHash = window.location.hash;
+
     netlifyIdentity.init();
 
     // Si ya hay sesión activa, ir directo al dashboard
     netlifyIdentity.on('init', user => {
-      if (user) window.location.href = '/portal/dashboard.html';
+      if (user) {
+        window.location.href = '/portal/dashboard.html';
+        return;
+      }
+      // Abrir widget explícitamente para invite/recovery — el auto-open del widget
+      // no es confiable; hay que forzarlo una vez que init() terminó de procesar el token
+      if (initialHash.includes('invite_token') || initialHash.includes('recovery_token')) {
+        netlifyIdentity.open();
+      }
     });
-    // El widget detecta invite_token / recovery_token automáticamente en esta página.
 
     // Al loguear exitosamente, ir al dashboard
     netlifyIdentity.on('login', () => {
@@ -47,8 +57,9 @@
       window.location.href = '/portal/dashboard.html';
     });
 
+    // Sin argumento: el widget elige el modo correcto según su estado interno
     document.getElementById('btn-login').addEventListener('click', () => {
-      netlifyIdentity.open('login');
+      netlifyIdentity.open();
     });
   </script>
 
