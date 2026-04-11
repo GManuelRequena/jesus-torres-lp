@@ -774,6 +774,30 @@ nav {
 .field-input--peso  { width: 80px; flex-shrink: 0; }
 .field-input--fecha { flex: 1; min-width: 130px; }
 
+.field-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.field-input-row .field-input { flex: 1; }
+
+.btn-view-doc {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 2px;
+  color: var(--muted);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-view-doc:hover { border-color: var(--yellow); color: var(--yellow); }
+
 .btn-save {
   background: var(--yellow);
   color: var(--dark);

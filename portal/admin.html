@@ -297,8 +297,13 @@
             <div class="student-fields">
               <div class="field-group">
                 <label class="field-label" for="field-${uid}-docId">Google Doc</label>
-                <input class="field-input" id="field-${uid}-docId" type="text" data-field="docId"
-                  value="${esc(meta.docId || '')}" placeholder="Pegar ID o URL del documento" />
+                <div class="field-input-row">
+                  <input class="field-input" id="field-${uid}-docId" type="text" data-field="docId"
+                    value="${esc(meta.docId || '')}" placeholder="Pegar ID o URL del documento" />
+                  ${meta.docId
+                    ? `<a class="btn-view-doc" href="https://docs.google.com/document/d/${esc(meta.docId)}/edit" target="_blank" rel="noopener noreferrer" title="Ver documento">↗</a>`
+                    : ''}
+                </div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="field-${uid}-servicio">Servicio</label>
