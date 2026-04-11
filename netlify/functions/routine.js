@@ -19,21 +19,33 @@
 //   Sem 1: descripción
 //   ...
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const { docId, email } = event.queryStringParameters || {};
+  // Resolve docId — priority:
+  //   1. app_metadata.docId del JWT (alumno autenticado)
+  //   2. ?docId= en querystring (testing directo)
+  //   3. ROUTINES_MAP lookup por email del JWT o ?email= (compatibilidad)
+  const jwtUser = context.clientContext?.user;
+  const { docId: qsDocId, email: qsEmail } = event.queryStringParameters || {};
 
-  // Resolve docId: either passed directly or looked up from ROUTINES_MAP env var
-  let resolvedDocId = docId;
-  if (!resolvedDocId && email) {
-    try {
-      const map = JSON.parse(process.env.ROUTINES_MAP || '{}');
-      resolvedDocId = map[email] || null;
-    } catch {
-      return { statusCode: 500, body: 'Invalid ROUTINES_MAP config' };
+  let resolvedDocId = jwtUser?.app_metadata?.docId || null;
+
+  if (!resolvedDocId && qsDocId) {
+    resolvedDocId = qsDocId;
+  }
+
+  if (!resolvedDocId) {
+    const email = jwtUser?.email || qsEmail;
+    if (email) {
+      try {
+        const map = JSON.parse(process.env.ROUTINES_MAP || '{}');
+        resolvedDocId = map[email] || null;
+      } catch {
+        return { statusCode: 500, body: 'Invalid ROUTINES_MAP config' };
+      }
     }
   }
 
