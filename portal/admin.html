@@ -90,6 +90,7 @@
       }
       document.getElementById('admin-page').style.display = 'block';
       initTabs();
+      initContainerListeners();
       loadStudents();
     });
 
@@ -110,6 +111,58 @@
           btn.classList.add('active');
           document.querySelector(`.tab-panel[data-panel="${btn.dataset.tab}"]`).classList.add('active');
         });
+      });
+    }
+
+    // ── Listeners del container (se registran una sola vez) ──────────────────
+    function initContainerListeners() {
+      const container = document.getElementById('students-container');
+
+      // Extraer Google Doc ID al pegar en el campo docId
+      container.addEventListener('paste', e => {
+        const input = e.target.closest('[data-field="docId"]');
+        if (!input) return;
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        const extracted = extractDocId(pasted);
+        if (extracted !== pasted) {
+          e.preventDefault();
+          input.value = extracted;
+        }
+      });
+
+      // Delegación de clicks para toda la lista
+      container.addEventListener('click', e => {
+        // Toggle sección archivados
+        const toggleBtn = e.target.closest('#btn-toggle-archived');
+        if (toggleBtn) {
+          const list    = document.getElementById('archived-list');
+          const chevron = document.querySelector('.archived-chevron');
+          const isOpen  = !list.hidden;
+          list.hidden   = isOpen;
+          chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+          return;
+        }
+
+        const saveBtn = e.target.closest('.student-save-btn');
+        if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
+
+        const addBtn = e.target.closest('.pesaje-add-btn');
+        if (addBtn) { addPesaje(addBtn.dataset.id); return; }
+
+        const delBtn = e.target.closest('.pesaje-del');
+        if (delBtn) { deletePesaje(delBtn.dataset.uid, parseInt(delBtn.dataset.idx)); return; }
+
+        const archiveBtn = e.target.closest('.student-archive-btn');
+        if (archiveBtn) {
+          const name = archiveBtn.closest('.student-item').querySelector('.student-name').textContent;
+          if (confirm(`¿Archivar a ${name}?\nPerderá acceso al portal.`)) {
+            setArchived(archiveBtn.dataset.id, true);
+          }
+          return;
+        }
+
+        const reactivateBtn = e.target.closest('.student-reactivate-btn');
+        if (reactivateBtn) { setArchived(reactivateBtn.dataset.id, false); return; }
       });
     }
 
@@ -213,44 +266,6 @@
         container.innerHTML = html;
         initAccordion();
 
-        document.getElementById('btn-toggle-archived')?.addEventListener('click', () => {
-          const list    = document.getElementById('archived-list');
-          const chevron = document.querySelector('.archived-chevron');
-          const isOpen  = !list.hidden;
-          list.hidden   = isOpen;
-          chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
-        });
-
-        // Limpiar URL de Google Docs al pegar en el campo docId
-        container.addEventListener('paste', e => {
-          const input = e.target.closest('[data-field="docId"]');
-          if (!input) return;
-          const pasted = (e.clipboardData || window.clipboardData).getData('text');
-          const extracted = extractDocId(pasted);
-          if (extracted !== pasted) {
-            e.preventDefault();
-            input.value = extracted;
-          }
-        });
-
-        // Delegación de eventos para toda la lista
-        container.addEventListener('click', e => {
-          const saveBtn       = e.target.closest('.student-save-btn');
-          if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
-
-          const addBtn        = e.target.closest('.pesaje-add-btn');
-          if (addBtn) { addPesaje(addBtn.dataset.id); return; }
-
-          const delBtn        = e.target.closest('.pesaje-del');
-          if (delBtn) { deletePesaje(delBtn.dataset.uid, parseInt(delBtn.dataset.idx)); return; }
-
-          const archiveBtn    = e.target.closest('.student-archive-btn');
-          if (archiveBtn) { setArchived(archiveBtn.dataset.id, true); return; }
-
-          const reactivateBtn = e.target.closest('.student-reactivate-btn');
-          if (reactivateBtn) { setArchived(reactivateBtn.dataset.id, false); return; }
-        });
-
       } catch (err) {
         container.innerHTML = `<div class="empty-state" style="padding:3rem 0">
           <div class="empty-title">Error al cargar</div>
@@ -309,8 +324,8 @@
             <div class="student-item-footer">
               <button class="btn-save student-save-btn" data-id="${uid}">Guardar</button>
               ${isArchived
-                ? `<button class="btn-reactivate student-reactivate-btn" data-id="${uid}">Reactivar</button>`
-                : `<button class="btn-archive student-archive-btn" data-id="${uid}">Archivar</button>`
+                ? `<button class="btn-secondary btn-secondary--success student-reactivate-btn" data-id="${uid}">Reactivar</button>`
+                : `<button class="btn-secondary btn-secondary--danger student-archive-btn" data-id="${uid}">Archivar</button>`
               }
               <span class="form-msg" id="msg-${uid}"></span>
             </div>
