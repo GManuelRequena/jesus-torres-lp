@@ -16,7 +16,6 @@
   <nav>
     <a href="/" class="nav-logo">Jesús Torres · EP</a>
     <div style="display:flex;align-items:center;gap:0.75rem">
-      <a href="/portal/admin.html" class="btn-logout" id="btn-admin" style="display:none;text-decoration:none">Admin</a>
       <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
     </div>
   </nav>
@@ -52,12 +51,13 @@
         return;
       }
       const roles = user.app_metadata?.roles || [];
-      if (!roles.includes('alumno') && !roles.includes('admin')) {
-        showAccessDenied();
+      if (roles.includes('admin') && !roles.includes('alumno')) {
+        window.location.href = '/portal/admin.html';
         return;
       }
-      if (roles.includes('admin')) {
-        document.getElementById('btn-admin').style.display = 'inline-flex';
+      if (!roles.includes('alumno')) {
+        showAccessDenied();
+        return;
       }
       renderDashboard(user);
     });

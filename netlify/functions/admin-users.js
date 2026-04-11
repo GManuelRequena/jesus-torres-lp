@@ -72,15 +72,34 @@ exports.handler = async (event, context) => {
     const { email, full_name } = payload;
     if (!email) return { statusCode: 400, body: 'email requerido' };
 
-    const r = await idFetch(identity, 'users', 'POST', {
-      email,
-      user_metadata: { full_name: full_name || '' },
-      app_metadata: { roles: ['alumno'] },
-      send_invite: true,
+    // Paso 1: enviar invite email via /invite (no /admin/users)
+    // POST /admin/users con send_invite:true NO envía el email en Netlify Identity.
+    // El endpoint correcto es /invite, que no admite app_metadata.
+    const inviteRes = await fetch(`${identity.url}/invite`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${identity.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        data: { full_name: full_name || '' },
+      }),
     });
 
-    if (!r.ok) return { statusCode: r.status, body: r.text };
-    return { statusCode: 200, headers: JSON_HEADERS, body: r.text };
+    if (!inviteRes.ok) {
+      return { statusCode: inviteRes.status, body: await inviteRes.text() };
+    }
+
+    const invitedUser = await inviteRes.json();
+
+    // Paso 2: asignar rol alumno en app_metadata
+    const metaRes = await idFetch(identity, `users/${invitedUser.id}`, 'PUT', {
+      app_metadata: { roles: ['alumno'] },
+    });
+
+    if (!metaRes.ok) return { statusCode: metaRes.status, body: metaRes.text };
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(invitedUser) };
   }
 
   // ── PUT: actualizar app_metadata de un alumno ─────────────────────────────
@@ -91,7 +110,7 @@ exports.handler = async (event, context) => {
       return { statusCode: 400, body: 'Invalid JSON' };
     }
 
-    const { id, docId, patologias, peso, servicio, objetivo, notas } = payload;
+    const { id, docId, patologias, peso, servicio, objetivo, notas, historialPeso, archivado } = payload;
     if (!id) return { statusCode: 400, body: 'id requerido' };
 
     // Leer app_metadata actual para no pisar roles ni otros campos
@@ -101,13 +120,23 @@ exports.handler = async (event, context) => {
     const existingMeta = JSON.parse(userRes.text).app_metadata || {};
     const updatedMeta = {
       ...existingMeta,
-      ...(docId      !== undefined && { docId }),
-      ...(patologias !== undefined && { patologias }),
-      ...(peso       !== undefined && { peso }),
-      ...(servicio   !== undefined && { servicio }),
-      ...(objetivo   !== undefined && { objetivo }),
-      ...(notas      !== undefined && { notas }),
+      ...(docId         !== undefined && { docId }),
+      ...(patologias    !== undefined && { patologias }),
+      ...(peso          !== undefined && { peso }),
+      ...(servicio      !== undefined && { servicio }),
+      ...(objetivo      !== undefined && { objetivo }),
+      ...(notas         !== undefined && { notas }),
+      ...(historialPeso !== undefined && { historialPeso }),
+      ...(archivado     !== undefined && { archivado }),
     };
+
+    // Al archivar/reactivar, sincronizar el rol alumno
+    if (archivado === true) {
+      updatedMeta.roles = (existingMeta.roles || []).filter(r => r !== 'alumno');
+    } else if (archivado === false) {
+      const roles = existingMeta.roles || [];
+      if (!roles.includes('alumno')) updatedMeta.roles = [...roles, 'alumno'];
+    }
 
     const r = await idFetch(identity, `users/${id}`, 'PUT', {
       app_metadata: updatedMeta,
