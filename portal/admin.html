@@ -18,45 +18,59 @@
       <a href="/" class="nav-logo">Jesús Torres · EP</a>
       <span class="nav-badge">ADMIN</span>
     </div>
-    <div style="display:flex;align-items:center;gap:0.75rem">
-      <a href="/portal/dashboard.html" class="btn-logout" style="text-decoration:none">Mi rutina</a>
-      <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
-    </div>
+    <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
   </nav>
 
   <main class="dashboard-page" id="admin-page" style="display:none">
 
-    <!-- Header -->
     <div class="dashboard-header fade-in">
       <div class="dashboard-greeting">Panel de administración</div>
-      <div class="dashboard-title">ALUMNOS <span id="admin-count"></span></div>
+      <div class="dashboard-title">GESTIÓN DE <span style="color:var(--yellow)">ALUMNOS</span></div>
     </div>
 
-    <!-- Lista de alumnos -->
-    <div id="students-container" class="fade-in">
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <span>Cargando alumnos...</span>
-      </div>
-    </div>
+    <div class="routine-card fade-in">
 
-    <!-- Invitar nuevo alumno -->
-    <div class="admin-section fade-in" id="invite-section">
-      <div class="admin-section-header">
-        <div class="section-label">Invitar nuevo alumno</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="alumnos">
+          Alumnos <span id="admin-count"></span>
+        </button>
+        <button class="tab-btn" data-tab="invitar">Invitar</button>
       </div>
-      <form id="invite-form" class="invite-form">
-        <div class="field-group">
-          <label class="field-label" for="invite-full-name">Nombre completo</label>
-          <input class="field-input" id="invite-full-name" type="text" name="full_name" placeholder="Juan Pérez" />
+
+      <div class="tab-panels">
+
+        <!-- Tab: lista de alumnos -->
+        <div class="tab-panel active" data-panel="alumnos">
+          <div id="students-container">
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <span>Cargando alumnos...</span>
+            </div>
+          </div>
         </div>
-        <div class="field-group">
-          <label class="field-label" for="invite-email">Email</label>
-          <input class="field-input" id="invite-email" type="email" name="email" placeholder="juan@email.com" required />
+
+        <!-- Tab: invitar nuevo alumno -->
+        <div class="tab-panel" data-panel="invitar">
+          <div class="routine-section">
+            <div class="section-label">Nuevo alumno</div>
+            <form id="invite-form" class="invite-form">
+              <div class="field-group">
+                <label class="field-label" for="invite-full-name">Nombre completo</label>
+                <input class="field-input" id="invite-full-name" type="text" name="full_name" placeholder="Juan Pérez" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="invite-email">Email</label>
+                <input class="field-input" id="invite-email" type="email" name="email" placeholder="juan@email.com" required />
+              </div>
+              <div class="invite-form-footer">
+                <button type="submit" class="btn-save" id="btn-invite">Enviar invitación</button>
+                <span class="form-msg" id="invite-msg"></span>
+              </div>
+            </form>
+          </div>
         </div>
-        <button type="submit" class="btn-save" id="btn-invite">Enviar invitación</button>
-        <span class="form-msg" id="invite-msg"></span>
-      </form>
+
+      </div>
     </div>
 
   </main>
@@ -75,6 +89,8 @@
         return;
       }
       document.getElementById('admin-page').style.display = 'block';
+      initTabs();
+      initContainerListeners();
       loadStudents();
     });
 
@@ -86,12 +102,117 @@
       window.location.href = '/portal/';
     });
 
-    // ── Helper: JWT con refresco ─────────────────────────────────────────────
+    // ── Tabs ─────────────────────────────────────────────────────────────────
+    function initTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.querySelector(`.tab-panel[data-panel="${btn.dataset.tab}"]`).classList.add('active');
+        });
+      });
+    }
+
+    // ── Listeners del container (se registran una sola vez) ──────────────────
+    function initContainerListeners() {
+      const container = document.getElementById('students-container');
+
+      // Extraer Google Doc ID al pegar en el campo docId
+      container.addEventListener('paste', e => {
+        const input = e.target.closest('[data-field="docId"]');
+        if (!input) return;
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        const extracted = extractDocId(pasted);
+        if (extracted !== pasted) {
+          e.preventDefault();
+          input.value = extracted;
+        }
+      });
+
+      // Delegación de clicks para toda la lista
+      container.addEventListener('click', e => {
+        // Toggle sección archivados
+        const toggleBtn = e.target.closest('#btn-toggle-archived');
+        if (toggleBtn) {
+          const list    = document.getElementById('archived-list');
+          const chevron = document.querySelector('.archived-chevron');
+          const isOpen  = !list.hidden;
+          list.hidden   = isOpen;
+          chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+          return;
+        }
+
+        const saveBtn = e.target.closest('.student-save-btn');
+        if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
+
+        const addBtn = e.target.closest('.pesaje-add-btn');
+        if (addBtn) { addPesaje(addBtn.dataset.id); return; }
+
+        const delBtn = e.target.closest('.pesaje-del');
+        if (delBtn) { deletePesaje(delBtn.dataset.uid, parseInt(delBtn.dataset.idx)); return; }
+
+        const archiveBtn = e.target.closest('.student-archive-btn');
+        if (archiveBtn) {
+          const name = archiveBtn.closest('.student-item').querySelector('.student-name').textContent;
+          if (confirm(`¿Archivar a ${name}?\nPerderá acceso al portal.`)) {
+            setArchived(archiveBtn.dataset.id, true);
+          }
+          return;
+        }
+
+        const reactivateBtn = e.target.closest('.student-reactivate-btn');
+        if (reactivateBtn) { setArchived(reactivateBtn.dataset.id, false); return; }
+      });
+    }
+
+    // ── Acordeón ─────────────────────────────────────────────────────────────
+    function initAccordion() {
+      document.querySelectorAll('.student-row').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const item   = btn.closest('.student-item');
+          const body   = item.querySelector('.student-body');
+          const isOpen = btn.getAttribute('aria-expanded') === 'true';
+
+          document.querySelectorAll('.student-row[aria-expanded="true"]').forEach(other => {
+            if (other !== btn) {
+              other.setAttribute('aria-expanded', 'false');
+              other.closest('.student-item').querySelector('.student-body').hidden = true;
+            }
+          });
+
+          btn.setAttribute('aria-expanded', String(!isOpen));
+          body.hidden = isOpen;
+        });
+      });
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
     async function getToken() {
       return await netlifyIdentity.currentUser().jwt();
     }
 
-    // ── Cargar lista de alumnos ──────────────────────────────────────────────
+    function esc(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function formatFecha(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-');
+      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`;
+    }
+
+    function todayISO() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function extractDocId(value) {
+      const match = /\/d\/([a-zA-Z0-9_-]+)/.exec(value);
+      return match ? match[1] : value;
+    }
+
+    // ── Cargar lista de alumnos ───────────────────────────────────────────────
     async function loadStudents() {
       const container = document.getElementById('students-container');
       try {
@@ -102,30 +223,49 @@
         if (!res.ok) throw new Error(res.status);
         const users = await res.json();
 
-        // Filtrar solo alumnos (excluir admins)
         const students = users.filter(u => {
           const roles = u.app_metadata?.roles || [];
-          return roles.includes('alumno');
+          return roles.includes('alumno') || u.app_metadata?.archivado;
         });
 
-        document.getElementById('admin-count').textContent = students.length
-          ? `(${students.length})`
-          : '';
+        const active   = students.filter(u => !u.app_metadata?.archivado);
+        const archived = students.filter(u =>  u.app_metadata?.archivado);
 
-        if (!students.length) {
+        document.getElementById('admin-count').textContent = active.length ? `(${active.length})` : '';
+
+        if (!active.length && !archived.length) {
           container.innerHTML = `
             <div class="empty-state" style="padding:3rem 0">
               <div class="empty-icon">👥</div>
               <div class="empty-title">Sin alumnos todavía</div>
-              <p class="empty-text">Invitá al primer alumno usando el formulario de abajo.</p>
+              <p class="empty-text">Invitá al primer alumno en la pestaña "Invitar".</p>
             </div>`;
           return;
         }
 
-        container.innerHTML = students.map(u => studentCard(u)).join('');
-        container.querySelectorAll('.student-save-btn').forEach(btn => {
-          btn.addEventListener('click', () => saveStudent(btn.dataset.id));
-        });
+        let html = active.length
+          ? `<div class="student-list">${active.map(u => studentItem(u, false)).join('')}</div>`
+          : `<div class="empty-state" style="padding:2rem 0">
+               <div class="empty-icon">👥</div>
+               <div class="empty-title">Sin alumnos activos</div>
+             </div>`;
+
+        if (archived.length) {
+          html += `
+            <div class="archived-toggle">
+              <button class="archived-toggle-btn" id="btn-toggle-archived">
+                Ver archivados (${archived.length})
+                <span class="archived-chevron">›</span>
+              </button>
+            </div>
+            <div class="student-list student-list--archived" id="archived-list" hidden>
+              ${archived.map(u => studentItem(u, true)).join('')}
+            </div>`;
+        }
+
+        container.innerHTML = html;
+        initAccordion();
+
       } catch (err) {
         container.innerHTML = `<div class="empty-state" style="padding:3rem 0">
           <div class="empty-title">Error al cargar</div>
@@ -135,74 +275,214 @@
       }
     }
 
-    // ── Render de card por alumno ────────────────────────────────────────────
-    function esc(str) {
-      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
+    // ── Render de item de acordeón ────────────────────────────────────────────
+    function studentItem(u, isArchived = false) {
+      const meta     = u.app_metadata || {};
+      const name     = esc(u.user_metadata?.full_name || u.email);
+      const uid      = esc(u.id);
+      const historial = Array.isArray(meta.historialPeso) ? meta.historialPeso : [];
 
-    function studentCard(u) {
-      const meta = u.app_metadata || {};
-      const name = esc(u.user_metadata?.full_name || u.email);
       return `
-        <div class="student-card" data-id="${esc(u.id)}">
-          <div class="student-card-header">
-            <div class="student-name">${name}</div>
-            <div class="student-email">${esc(u.email)}</div>
-          </div>
-          <div class="student-fields">
-            <div class="field-group">
-              <label class="field-label" for="field-${esc(u.id)}-docId">Google Doc ID</label>
-              <input class="field-input" id="field-${esc(u.id)}-docId" type="text" data-field="docId"
-                value="${esc(meta.docId || '')}" placeholder="1abc..." />
+        <div class="student-item${isArchived ? ' student-item--archived' : ''}" data-id="${uid}" data-historial="${esc(JSON.stringify(historial))}">
+          <button class="student-row" aria-expanded="false">
+            <div class="student-row-info">
+              <span class="student-name">${name}</span>
+              <span class="student-email">${esc(u.email)}</span>
             </div>
-            <div class="field-group">
-              <label class="field-label" for="field-${esc(u.id)}-servicio">Servicio</label>
-              <input class="field-input" id="field-${esc(u.id)}-servicio" type="text" data-field="servicio"
-                value="${esc(meta.servicio || '')}" placeholder="Online 3x/semana" />
+            <span class="student-chevron">›</span>
+          </button>
+          <div class="student-body" hidden>
+
+            <!-- Campos generales -->
+            <div class="student-fields">
+              <div class="field-group">
+                <label class="field-label" for="field-${uid}-docId">Google Doc</label>
+                <div class="field-input-row">
+                  <input class="field-input" id="field-${uid}-docId" type="text" data-field="docId"
+                    value="${esc(meta.docId || '')}" placeholder="Pegar ID o URL del documento" />
+                  ${meta.docId
+                    ? `<a class="btn-view-doc" href="https://docs.google.com/document/d/${esc(meta.docId)}/edit" target="_blank" rel="noopener noreferrer" title="Ver documento">↗</a>`
+                    : ''}
+                </div>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="field-${uid}-servicio">Servicio</label>
+                <input class="field-input" id="field-${uid}-servicio" type="text" data-field="servicio"
+                  value="${esc(meta.servicio || '')}" placeholder="Online 3x/semana" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="field-${uid}-objetivo">Objetivo</label>
+                <input class="field-input" id="field-${uid}-objetivo" type="text" data-field="objetivo"
+                  value="${esc(meta.objetivo || '')}" placeholder="Ganar masa muscular" />
+              </div>
+              <div class="field-group field-group--full">
+                <label class="field-label" for="field-${uid}-patologias">Patologías / condiciones</label>
+                <input class="field-input" id="field-${uid}-patologias" type="text" data-field="patologias"
+                  value="${esc(meta.patologias || '')}" placeholder="Lumbalgia crónica, HTA..." />
+              </div>
+              <div class="field-group field-group--full">
+                <label class="field-label" for="field-${uid}-notas">Notas internas</label>
+                <input class="field-input" id="field-${uid}-notas" type="text" data-field="notas"
+                  value="${esc(meta.notas || '')}" placeholder="Prefiere entrenar a la mañana..." />
+              </div>
             </div>
-            <div class="field-group">
-              <label class="field-label" for="field-${esc(u.id)}-objetivo">Objetivo</label>
-              <input class="field-input" id="field-${esc(u.id)}-objetivo" type="text" data-field="objetivo"
-                value="${esc(meta.objetivo || '')}" placeholder="Ganar masa muscular" />
+            <div class="student-item-footer">
+              <button class="btn-save student-save-btn" data-id="${uid}">Guardar</button>
+              ${isArchived
+                ? `<button class="btn-secondary btn-secondary--success student-reactivate-btn" data-id="${uid}">Reactivar</button>`
+                : `<button class="btn-secondary btn-secondary--danger student-archive-btn" data-id="${uid}">Archivar</button>`
+              }
+              <span class="form-msg" id="msg-${uid}"></span>
             </div>
-            <div class="field-group">
-              <label class="field-label" for="field-${esc(u.id)}-peso">Peso (kg)</label>
-              <input class="field-input field-input--short" id="field-${esc(u.id)}-peso" type="number" data-field="peso"
-                value="${esc(meta.peso ?? '')}" placeholder="75" />
+
+            <!-- Historial de peso -->
+            <div class="pesajes-section">
+              <div class="pesajes-header">
+                <span class="section-label" style="margin:0">Historial de peso</span>
+                ${historial.length ? `<span class="pesajes-count">${historial.length} registro${historial.length !== 1 ? 's' : ''}</span>` : ''}
+              </div>
+              <div class="pesajes-list" id="pesajes-${uid}">
+                ${renderPesajesHTML(uid, historial)}
+              </div>
+              <div class="pesaje-add">
+                <input class="field-input field-input--peso" id="peso-input-${uid}"
+                  type="number" placeholder="kg" step="0.1" min="0" />
+                <input class="field-input field-input--fecha" id="fecha-input-${uid}"
+                  type="date" value="${todayISO()}" />
+                <button class="btn-save pesaje-add-btn" data-id="${uid}">+ Registrar</button>
+              </div>
             </div>
-            <div class="field-group field-group--full">
-              <label class="field-label" for="field-${esc(u.id)}-patologias">Patologías / condiciones</label>
-              <input class="field-input" id="field-${esc(u.id)}-patologias" type="text" data-field="patologias"
-                value="${esc(meta.patologias || '')}" placeholder="Lumbalgia crónica, HTA..." />
-            </div>
-            <div class="field-group field-group--full">
-              <label class="field-label" for="field-${esc(u.id)}-notas">Notas internas</label>
-              <input class="field-input" id="field-${esc(u.id)}-notas" type="text" data-field="notas"
-                value="${esc(meta.notas || '')}" placeholder="Prefiere entrenar a la mañana..." />
-            </div>
-          </div>
-          <div class="student-card-footer">
-            <button class="btn-save student-save-btn" data-id="${esc(u.id)}">Guardar</button>
-            <span class="form-msg" id="msg-${esc(u.id)}"></span>
+
           </div>
         </div>`;
     }
 
-    // ── Guardar cambios de un alumno ─────────────────────────────────────────
+    // ── Render lista de pesajes (HTML string) ─────────────────────────────────
+    function renderPesajesHTML(uid, historial) {
+      if (!historial.length) {
+        return `<p class="pesaje-empty">Sin registros todavía.</p>`;
+      }
+      return [...historial]
+        .map((entry, i) => ({ ...entry, _i: i }))
+        .reverse()
+        .map(entry => `
+          <div class="pesaje-row">
+            <span class="pesaje-fecha">${formatFecha(entry.fecha)}</span>
+            <span class="pesaje-valor">${entry.peso} kg</span>
+            <button class="pesaje-del" data-uid="${esc(uid)}" data-idx="${entry._i}" aria-label="Eliminar">×</button>
+          </div>`)
+        .join('');
+    }
+
+    // ── Actualizar lista de pesajes en el DOM ─────────────────────────────────
+    function refreshPesajesList(uid, historial) {
+      const item = document.querySelector(`.student-item[data-id="${uid}"]`);
+      item.dataset.historial = JSON.stringify(historial);
+
+      document.getElementById(`pesajes-${uid}`).innerHTML = renderPesajesHTML(uid, historial);
+
+      const header = item.querySelector('.pesajes-header');
+      let countEl  = header.querySelector('.pesajes-count');
+      if (historial.length) {
+        const text = `${historial.length} registro${historial.length !== 1 ? 's' : ''}`;
+        if (!countEl) {
+          countEl = document.createElement('span');
+          countEl.className = 'pesajes-count';
+          header.appendChild(countEl);
+        }
+        countEl.textContent = text;
+      } else if (countEl) {
+        countEl.remove();
+      }
+    }
+
+    // ── Guardar historialPeso ─────────────────────────────────────────────────
+    async function savePesajes(uid, historial) {
+      const token = await getToken();
+      const res = await fetch('/.netlify/functions/admin-users', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: uid, historialPeso: historial }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    }
+
+    // ── Agregar pesaje ────────────────────────────────────────────────────────
+    async function addPesaje(uid) {
+      const item      = document.querySelector(`.student-item[data-id="${uid}"]`);
+      const pesoInput = document.getElementById(`peso-input-${uid}`);
+      const fechaInput = document.getElementById(`fecha-input-${uid}`);
+      const addBtn    = item.querySelector('.pesaje-add-btn');
+
+      const peso  = parseFloat(pesoInput.value);
+      const fecha = fechaInput.value;
+
+      if (isNaN(peso) || peso <= 0) { pesoInput.focus(); return; }
+      if (!fecha) { fechaInput.focus(); return; }
+
+      const historial = JSON.parse(item.dataset.historial || '[]');
+      historial.push({ fecha, peso });
+
+      addBtn.disabled = true;
+      addBtn.textContent = 'Guardando...';
+
+      try {
+        await savePesajes(uid, historial);
+        refreshPesajesList(uid, historial);
+        pesoInput.value = '';
+      } catch (err) {
+        historial.pop(); // revertir
+        alert(`Error al guardar: ${err.message}`);
+      } finally {
+        addBtn.disabled = false;
+        addBtn.textContent = '+ Registrar';
+      }
+    }
+
+    // ── Eliminar pesaje ───────────────────────────────────────────────────────
+    async function deletePesaje(uid, idx) {
+      const item = document.querySelector(`.student-item[data-id="${uid}"]`);
+      const historial = JSON.parse(item.dataset.historial || '[]');
+      const removed = historial.splice(idx, 1);
+
+      try {
+        await savePesajes(uid, historial);
+        refreshPesajesList(uid, historial);
+      } catch (err) {
+        historial.splice(idx, 0, ...removed); // revertir
+        alert(`Error al eliminar: ${err.message}`);
+      }
+    }
+
+    // ── Archivar / reactivar alumno ───────────────────────────────────────────
+    async function setArchived(id, value) {
+      try {
+        const token = await getToken();
+        const res = await fetch('/.netlify/functions/admin-users', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, archivado: value }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        await loadStudents();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    }
+
+    // ── Guardar campos generales de un alumno ─────────────────────────────────
     async function saveStudent(id) {
-      const card = document.querySelector(`.student-card[data-id="${id}"]`);
-      const btn  = card.querySelector('.student-save-btn');
+      const item = document.querySelector(`.student-item[data-id="${id}"]`);
+      const btn  = item.querySelector('.student-save-btn');
       const msg  = document.getElementById(`msg-${id}`);
 
       const payload = { id };
-      card.querySelectorAll('[data-field]').forEach(input => {
+      item.querySelectorAll('[data-field]').forEach(input => {
         payload[input.dataset.field] = input.value.trim() || null;
       });
-      // peso como número si está presente
-      if (payload.peso !== null) {
-        const parsed = parseFloat(payload.peso);
-        payload.peso = isNaN(parsed) ? null : parsed;
-      }
 
       btn.disabled = true;
       btn.textContent = 'Guardando...';
@@ -232,12 +512,12 @@
       }
     }
 
-    // ── Invitar nuevo alumno ─────────────────────────────────────────────────
+    // ── Invitar nuevo alumno ──────────────────────────────────────────────────
     document.getElementById('invite-form').addEventListener('submit', async e => {
       e.preventDefault();
-      const form   = e.target;
-      const btn    = document.getElementById('btn-invite');
-      const msg    = document.getElementById('invite-msg');
+      const form      = e.target;
+      const btn       = document.getElementById('btn-invite');
+      const msg       = document.getElementById('invite-msg');
       const email     = form.email.value.trim();
       const full_name = form.full_name.value.trim();
 
@@ -260,7 +540,8 @@
         msg.textContent = `✓ Invitación enviada a ${email}`;
         msg.classList.add('form-msg--ok');
         form.reset();
-        await loadStudents(); // refrescar lista
+        await loadStudents();
+        document.querySelector('.tab-btn[data-tab="alumnos"]').click();
       } catch (err) {
         msg.textContent = `Error: ${err.message}`;
         msg.classList.add('form-msg--err');
