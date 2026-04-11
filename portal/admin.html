@@ -157,6 +157,11 @@
       return new Date().toISOString().split('T')[0];
     }
 
+    function extractDocId(value) {
+      const match = /\/d\/([a-zA-Z0-9_-]+)/.exec(value);
+      return match ? match[1] : value;
+    }
+
     // ── Cargar lista de alumnos ───────────────────────────────────────────────
     async function loadStudents() {
       const container = document.getElementById('students-container');
@@ -184,6 +189,18 @@
 
         container.innerHTML = `<div class="student-list">${students.map(u => studentItem(u)).join('')}</div>`;
         initAccordion();
+
+        // Limpiar URL de Google Docs al pegar en el campo docId
+        container.addEventListener('paste', e => {
+          const input = e.target.closest('[data-field="docId"]');
+          if (!input) return;
+          const pasted = (e.clipboardData || window.clipboardData).getData('text');
+          const extracted = extractDocId(pasted);
+          if (extracted !== pasted) {
+            e.preventDefault();
+            input.value = extracted;
+          }
+        });
 
         // Delegación de eventos para toda la lista
         container.addEventListener('click', e => {
@@ -227,9 +244,9 @@
             <!-- Campos generales -->
             <div class="student-fields">
               <div class="field-group">
-                <label class="field-label" for="field-${uid}-docId">Google Doc ID</label>
+                <label class="field-label" for="field-${uid}-docId">Google Doc</label>
                 <input class="field-input" id="field-${uid}-docId" type="text" data-field="docId"
-                  value="${esc(meta.docId || '')}" placeholder="1abc..." />
+                  value="${esc(meta.docId || '')}" placeholder="Pegar ID o URL del documento" />
               </div>
               <div class="field-group">
                 <label class="field-label" for="field-${uid}-servicio">Servicio</label>
