@@ -91,7 +91,7 @@ exports.handler = async (event, context) => {
       return { statusCode: 400, body: 'Invalid JSON' };
     }
 
-    const { id, docId, patologias, peso, servicio, objetivo, notas } = payload;
+    const { id, docId, patologias, peso, servicio, objetivo, notas, historialPeso } = payload;
     if (!id) return { statusCode: 400, body: 'id requerido' };
 
     // Leer app_metadata actual para no pisar roles ni otros campos
@@ -101,12 +101,13 @@ exports.handler = async (event, context) => {
     const existingMeta = JSON.parse(userRes.text).app_metadata || {};
     const updatedMeta = {
       ...existingMeta,
-      ...(docId      !== undefined && { docId }),
-      ...(patologias !== undefined && { patologias }),
-      ...(peso       !== undefined && { peso }),
-      ...(servicio   !== undefined && { servicio }),
-      ...(objetivo   !== undefined && { objetivo }),
-      ...(notas      !== undefined && { notas }),
+      ...(docId         !== undefined && { docId }),
+      ...(patologias    !== undefined && { patologias }),
+      ...(peso          !== undefined && { peso }),
+      ...(servicio      !== undefined && { servicio }),
+      ...(objetivo      !== undefined && { objetivo }),
+      ...(notas         !== undefined && { notas }),
+      ...(historialPeso !== undefined && { historialPeso }),
     };
 
     const r = await idFetch(identity, `users/${id}`, 'PUT', {

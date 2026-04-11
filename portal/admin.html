@@ -124,7 +124,6 @@
           const body   = item.querySelector('.student-body');
           const isOpen = btn.getAttribute('aria-expanded') === 'true';
 
-          // Cerrar todos los demás
           document.querySelectorAll('.student-row[aria-expanded="true"]').forEach(other => {
             if (other !== btn) {
               other.setAttribute('aria-expanded', 'false');
@@ -132,21 +131,30 @@
             }
           });
 
-          // Alternar el actual
           btn.setAttribute('aria-expanded', String(!isOpen));
           body.hidden = isOpen;
         });
       });
     }
 
-    // ── Helper: JWT ───────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
     async function getToken() {
       return await netlifyIdentity.currentUser().jwt();
     }
 
-    // ── Helper: XSS ──────────────────────────────────────────────────────────
     function esc(str) {
       return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function formatFecha(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-');
+      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`;
+    }
+
+    function todayISO() {
+      return new Date().toISOString().split('T')[0];
     }
 
     // ── Cargar lista de alumnos ───────────────────────────────────────────────
@@ -160,13 +168,9 @@
         if (!res.ok) throw new Error(res.status);
         const users = await res.json();
 
-        const students = users.filter(u => {
-          const roles = u.app_metadata?.roles || [];
-          return roles.includes('alumno');
-        });
+        const students = users.filter(u => (u.app_metadata?.roles || []).includes('alumno'));
 
-        const countEl = document.getElementById('admin-count');
-        countEl.textContent = students.length ? `(${students.length})` : '';
+        document.getElementById('admin-count').textContent = students.length ? `(${students.length})` : '';
 
         if (!students.length) {
           container.innerHTML = `
@@ -179,10 +183,19 @@
         }
 
         container.innerHTML = `<div class="student-list">${students.map(u => studentItem(u)).join('')}</div>`;
-        container.querySelectorAll('.student-save-btn').forEach(btn => {
-          btn.addEventListener('click', () => saveStudent(btn.dataset.id));
-        });
         initAccordion();
+
+        // Delegación de eventos para toda la lista
+        container.addEventListener('click', e => {
+          const saveBtn = e.target.closest('.student-save-btn');
+          if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
+
+          const addBtn = e.target.closest('.pesaje-add-btn');
+          if (addBtn) { addPesaje(addBtn.dataset.id); return; }
+
+          const delBtn = e.target.closest('.pesaje-del');
+          if (delBtn) { deletePesaje(delBtn.dataset.uid, parseInt(delBtn.dataset.idx)); return; }
+        });
 
       } catch (err) {
         container.innerHTML = `<div class="empty-state" style="padding:3rem 0">
@@ -193,13 +206,15 @@
       }
     }
 
-    // ── Render acordeón por alumno ────────────────────────────────────────────
+    // ── Render de item de acordeón ────────────────────────────────────────────
     function studentItem(u) {
-      const meta = u.app_metadata || {};
-      const name = esc(u.user_metadata?.full_name || u.email);
-      const uid  = esc(u.id);
+      const meta     = u.app_metadata || {};
+      const name     = esc(u.user_metadata?.full_name || u.email);
+      const uid      = esc(u.id);
+      const historial = Array.isArray(meta.historialPeso) ? meta.historialPeso : [];
+
       return `
-        <div class="student-item" data-id="${uid}">
+        <div class="student-item" data-id="${uid}" data-historial="${esc(JSON.stringify(historial))}">
           <button class="student-row" aria-expanded="false">
             <div class="student-row-info">
               <span class="student-name">${name}</span>
@@ -208,6 +223,8 @@
             <span class="student-chevron">›</span>
           </button>
           <div class="student-body" hidden>
+
+            <!-- Campos generales -->
             <div class="student-fields">
               <div class="field-group">
                 <label class="field-label" for="field-${uid}-docId">Google Doc ID</label>
@@ -224,11 +241,6 @@
                 <input class="field-input" id="field-${uid}-objetivo" type="text" data-field="objetivo"
                   value="${esc(meta.objetivo || '')}" placeholder="Ganar masa muscular" />
               </div>
-              <div class="field-group">
-                <label class="field-label" for="field-${uid}-peso">Peso (kg)</label>
-                <input class="field-input field-input--short" id="field-${uid}-peso" type="number" data-field="peso"
-                  value="${esc(meta.peso ?? '')}" placeholder="75" />
-              </div>
               <div class="field-group field-group--full">
                 <label class="field-label" for="field-${uid}-patologias">Patologías / condiciones</label>
                 <input class="field-input" id="field-${uid}-patologias" type="text" data-field="patologias"
@@ -244,11 +256,130 @@
               <button class="btn-save student-save-btn" data-id="${uid}">Guardar</button>
               <span class="form-msg" id="msg-${uid}"></span>
             </div>
+
+            <!-- Historial de peso -->
+            <div class="pesajes-section">
+              <div class="pesajes-header">
+                <span class="section-label" style="margin:0">Historial de peso</span>
+                ${historial.length ? `<span class="pesajes-count">${historial.length} registro${historial.length !== 1 ? 's' : ''}</span>` : ''}
+              </div>
+              <div class="pesajes-list" id="pesajes-${uid}">
+                ${renderPesajesHTML(uid, historial)}
+              </div>
+              <div class="pesaje-add">
+                <input class="field-input field-input--peso" id="peso-input-${uid}"
+                  type="number" placeholder="kg" step="0.1" min="0" />
+                <input class="field-input field-input--fecha" id="fecha-input-${uid}"
+                  type="date" value="${todayISO()}" />
+                <button class="btn-save pesaje-add-btn" data-id="${uid}">+ Registrar</button>
+              </div>
+            </div>
+
           </div>
         </div>`;
     }
 
-    // ── Guardar cambios de un alumno ──────────────────────────────────────────
+    // ── Render lista de pesajes (HTML string) ─────────────────────────────────
+    function renderPesajesHTML(uid, historial) {
+      if (!historial.length) {
+        return `<p class="pesaje-empty">Sin registros todavía.</p>`;
+      }
+      return [...historial]
+        .map((entry, i) => ({ ...entry, _i: i }))
+        .reverse()
+        .map(entry => `
+          <div class="pesaje-row">
+            <span class="pesaje-fecha">${formatFecha(entry.fecha)}</span>
+            <span class="pesaje-valor">${entry.peso} kg</span>
+            <button class="pesaje-del" data-uid="${esc(uid)}" data-idx="${entry._i}" aria-label="Eliminar">×</button>
+          </div>`)
+        .join('');
+    }
+
+    // ── Actualizar lista de pesajes en el DOM ─────────────────────────────────
+    function refreshPesajesList(uid, historial) {
+      const item = document.querySelector(`.student-item[data-id="${uid}"]`);
+      item.dataset.historial = JSON.stringify(historial);
+
+      document.getElementById(`pesajes-${uid}`).innerHTML = renderPesajesHTML(uid, historial);
+
+      const header = item.querySelector('.pesajes-header');
+      let countEl  = header.querySelector('.pesajes-count');
+      if (historial.length) {
+        const text = `${historial.length} registro${historial.length !== 1 ? 's' : ''}`;
+        if (!countEl) {
+          countEl = document.createElement('span');
+          countEl.className = 'pesajes-count';
+          header.appendChild(countEl);
+        }
+        countEl.textContent = text;
+      } else if (countEl) {
+        countEl.remove();
+      }
+    }
+
+    // ── Guardar historialPeso ─────────────────────────────────────────────────
+    async function savePesajes(uid, historial) {
+      const token = await getToken();
+      const res = await fetch('/.netlify/functions/admin-users', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: uid, historialPeso: historial }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    }
+
+    // ── Agregar pesaje ────────────────────────────────────────────────────────
+    async function addPesaje(uid) {
+      const item      = document.querySelector(`.student-item[data-id="${uid}"]`);
+      const pesoInput = document.getElementById(`peso-input-${uid}`);
+      const fechaInput = document.getElementById(`fecha-input-${uid}`);
+      const addBtn    = item.querySelector('.pesaje-add-btn');
+
+      const peso  = parseFloat(pesoInput.value);
+      const fecha = fechaInput.value;
+
+      if (isNaN(peso) || peso <= 0) { pesoInput.focus(); return; }
+      if (!fecha) { fechaInput.focus(); return; }
+
+      const historial = JSON.parse(item.dataset.historial || '[]');
+      historial.push({ fecha, peso });
+
+      addBtn.disabled = true;
+      addBtn.textContent = 'Guardando...';
+
+      try {
+        await savePesajes(uid, historial);
+        refreshPesajesList(uid, historial);
+        pesoInput.value = '';
+      } catch (err) {
+        historial.pop(); // revertir
+        alert(`Error al guardar: ${err.message}`);
+      } finally {
+        addBtn.disabled = false;
+        addBtn.textContent = '+ Registrar';
+      }
+    }
+
+    // ── Eliminar pesaje ───────────────────────────────────────────────────────
+    async function deletePesaje(uid, idx) {
+      const item = document.querySelector(`.student-item[data-id="${uid}"]`);
+      const historial = JSON.parse(item.dataset.historial || '[]');
+      const removed = historial.splice(idx, 1);
+
+      try {
+        await savePesajes(uid, historial);
+        refreshPesajesList(uid, historial);
+      } catch (err) {
+        historial.splice(idx, 0, ...removed); // revertir
+        alert(`Error al eliminar: ${err.message}`);
+      }
+    }
+
+    // ── Guardar campos generales de un alumno ─────────────────────────────────
     async function saveStudent(id) {
       const item = document.querySelector(`.student-item[data-id="${id}"]`);
       const btn  = item.querySelector('.student-save-btn');
@@ -258,10 +389,6 @@
       item.querySelectorAll('[data-field]').forEach(input => {
         payload[input.dataset.field] = input.value.trim() || null;
       });
-      if (payload.peso !== null) {
-        const parsed = parseFloat(payload.peso);
-        payload.peso = isNaN(parsed) ? null : parsed;
-      }
 
       btn.disabled = true;
       btn.textContent = 'Guardando...';
@@ -320,7 +447,6 @@
         msg.classList.add('form-msg--ok');
         form.reset();
         await loadStudents();
-        // Volver a tab de alumnos tras invitar
         document.querySelector('.tab-btn[data-tab="alumnos"]').click();
       } catch (err) {
         msg.textContent = `Error: ${err.message}`;
