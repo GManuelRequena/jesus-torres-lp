@@ -422,20 +422,11 @@
 
     // Netlify Identity — maneja tokens de invite/recovery que aterrizan en la raíz
     if (window.netlifyIdentity) {
-      // Capturar hash ANTES de que netlifyIdentity.init() lo limpie de la URL
-      const initialHash = window.location.hash;
-      netlifyIdentity.init();
-      netlifyIdentity.on('init', user => {
-        if (!user) {
-          // Abrir widget si había token de invitación o recuperación
-          if (initialHash.includes('invite_token') || initialHash.includes('recovery_token')) {
-            netlifyIdentity.open();
-          }
-          netlifyIdentity.on('login', () => {
-            window.location.href = '/portal/dashboard.html';
-          });
-        }
+      netlifyIdentity.on('login', () => {
+        window.location.href = '/portal/dashboard.html';
       });
+      // No llamar init() — el widget se auto-inicializa al cargar el script
+      // y abre automáticamente el formulario de invite sin ser reseteado
     }
 
     // Menú hamburguesa

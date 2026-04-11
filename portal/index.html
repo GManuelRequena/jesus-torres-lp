@@ -33,23 +33,12 @@
   </main>
 
   <script>
-    // Capturar hash ANTES de que netlifyIdentity.init() lo limpie de la URL
-    const initialHash = window.location.hash;
-    netlifyIdentity.init();
-
-    // Si ya hay sesión activa, ir directo al dashboard
     netlifyIdentity.on('init', user => {
       if (user) {
         window.location.href = '/portal/dashboard.html';
-        return;
-      }
-      // Abrir widget si había token de invitación o recuperación
-      if (initialHash.includes('invite_token') || initialHash.includes('recovery_token')) {
-        netlifyIdentity.open();
       }
     });
 
-    // Al loguear exitosamente, ir al dashboard
     netlifyIdentity.on('login', () => {
       netlifyIdentity.close();
       window.location.href = '/portal/dashboard.html';
