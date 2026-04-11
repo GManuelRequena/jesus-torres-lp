@@ -72,15 +72,34 @@ exports.handler = async (event, context) => {
     const { email, full_name } = payload;
     if (!email) return { statusCode: 400, body: 'email requerido' };
 
-    const r = await idFetch(identity, 'users', 'POST', {
-      email,
-      user_metadata: { full_name: full_name || '' },
-      app_metadata: { roles: ['alumno'] },
-      send_invite: true,
+    // Paso 1: enviar invite email via /invite (no /admin/users)
+    // POST /admin/users con send_invite:true NO envía el email en Netlify Identity.
+    // El endpoint correcto es /invite, que no admite app_metadata.
+    const inviteRes = await fetch(`${identity.url}/invite`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${identity.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        data: { full_name: full_name || '' },
+      }),
     });
 
-    if (!r.ok) return { statusCode: r.status, body: r.text };
-    return { statusCode: 200, headers: JSON_HEADERS, body: r.text };
+    if (!inviteRes.ok) {
+      return { statusCode: inviteRes.status, body: await inviteRes.text() };
+    }
+
+    const invitedUser = await inviteRes.json();
+
+    // Paso 2: asignar rol alumno en app_metadata
+    const metaRes = await idFetch(identity, `users/${invitedUser.id}`, 'PUT', {
+      app_metadata: { roles: ['alumno'] },
+    });
+
+    if (!metaRes.ok) return { statusCode: metaRes.status, body: metaRes.text };
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(invitedUser) };
   }
 
   // ── PUT: actualizar app_metadata de un alumno ─────────────────────────────
