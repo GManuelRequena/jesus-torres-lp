@@ -132,7 +132,8 @@
 
       // Delegación de clicks para toda la lista
       container.addEventListener('click', e => {
-        // Toggle sección archivados
+
+        // ── Toggle sección archivados ────────────────────────────────────────
         const toggleBtn = e.target.closest('#btn-toggle-archived');
         if (toggleBtn) {
           const list    = document.getElementById('archived-list');
@@ -143,15 +144,187 @@
           return;
         }
 
+        // ── Sub-tabs del alumno ──────────────────────────────────────────────
+        const subTabBtn = e.target.closest('.student-tab-btn');
+        if (subTabBtn) {
+          const uid    = subTabBtn.dataset.uid;
+          const subtab = subTabBtn.dataset.subtab;
+          const body   = subTabBtn.closest('.student-body');
+          body.querySelectorAll('.student-tab-btn').forEach(b => b.classList.remove('active'));
+          body.querySelectorAll('.student-tab-panel').forEach(p => { p.hidden = true; });
+          subTabBtn.classList.add('active');
+          body.querySelector(`.student-tab-panel[data-subtab="${subtab}"]`).hidden = false;
+          if (subtab === 'rutina') {
+            const rePanel = document.getElementById(`re-panel-${uid}`);
+            if (!rePanel.querySelector('.re-editor')) loadRoutineTab(uid);
+          }
+          return;
+        }
+
+        // ── Tabs de días en el editor ────────────────────────────────────────
+        const reDayBtn = e.target.closest('.re-day-btn');
+        if (reDayBtn) {
+          const uid    = reDayBtn.dataset.uid;
+          const newIdx = parseInt(reDayBtn.dataset.day);
+          const editor = reDayBtn.closest('.re-editor');
+
+          if (reDayBtn.classList.contains('active') && routineStates[uid]?.dias.length > 1) {
+            const diaLabel = routineStates[uid].dias[newIdx]?.label || `Día ${newIdx + 1}`;
+            if (!confirm(`¿Eliminar ${diaLabel}? Se perderá su contenido.`)) return;
+            syncRoutineStateFromDOM(uid);
+            routineStates[uid].dias.splice(newIdx, 1);
+            routineStates[uid].dias.forEach((d, i) => { d.label = `Día ${i + 1}`; });
+            const newActive = Math.min(newIdx, routineStates[uid].dias.length - 1);
+            renderRoutineEditor(uid, newActive);
+            return;
+          }
+
+          editor.querySelectorAll('.re-day-btn').forEach(b => b.classList.remove('active'));
+          editor.querySelectorAll('.re-day-panel').forEach(p => p.classList.add('re-day-panel--hidden'));
+          reDayBtn.classList.add('active');
+          editor.querySelector(`.re-day-panel[data-uid="${uid}"][data-day="${newIdx}"]`)
+            ?.classList.remove('re-day-panel--hidden');
+          return;
+        }
+
+        // ── Agregar día ──────────────────────────────────────────────────────
+        const addDayBtn = e.target.closest('.re-add-day-btn');
+        if (addDayBtn) {
+          const uid = addDayBtn.dataset.uid;
+          if (!routineStates[uid] || routineStates[uid].dias.length >= 6) return;
+          syncRoutineStateFromDOM(uid);
+          const newIdx = routineStates[uid].dias.length;
+          routineStates[uid].dias.push({ label: `Día ${newIdx + 1}`, movilidad: [], calor: [], principal: [] });
+          renderRoutineEditor(uid, newIdx);
+          return;
+        }
+
+        // ── Agregar ítem de movilidad ────────────────────────────────────────
+        const addMovBtn = e.target.closest('.re-add-mov-btn');
+        if (addMovBtn) {
+          const uid    = addMovBtn.dataset.uid;
+          const dayIdx = parseInt(addMovBtn.dataset.day);
+          syncRoutineStateFromDOM(uid);
+          routineStates[uid].dias[dayIdx].movilidad.push({ nombre: '', youtubeUrl: null });
+          document.getElementById(`re-movilidad-${uid}-${dayIdx}`).innerHTML = renderMovilidadItems(uid, dayIdx);
+          return;
+        }
+
+        // ── Agregar ítem de calor ────────────────────────────────────────────
+        const addCalorBtn = e.target.closest('.re-add-calor-btn');
+        if (addCalorBtn) {
+          const uid    = addCalorBtn.dataset.uid;
+          const dayIdx = parseInt(addCalorBtn.dataset.day);
+          syncRoutineStateFromDOM(uid);
+          routineStates[uid].dias[dayIdx].calor.push({ nombre: '' });
+          document.getElementById(`re-calor-${uid}-${dayIdx}`).innerHTML = renderCalorItems(uid, dayIdx);
+          return;
+        }
+
+        // ── Agregar ejercicio en parte principal ─────────────────────────────
+        const addExBtn = e.target.closest('.re-add-ex-btn');
+        if (addExBtn) {
+          const uid    = addExBtn.dataset.uid;
+          const dayIdx = parseInt(addExBtn.dataset.day);
+          syncRoutineStateFromDOM(uid);
+          const n = routineStates[uid].dias[dayIdx].principal.length + 1;
+          routineStates[uid].dias[dayIdx].principal.push({
+            num: n, nombre: '', series: null, reps: null, unidad: 'reps',
+            peso: null, pesoUnidad: 'kg', nota: null, youtubeUrl: null,
+          });
+          document.getElementById(`re-principal-${uid}-${dayIdx}`).innerHTML = renderPrincipalItems(uid, dayIdx);
+          return;
+        }
+
+        // ── Eliminar ítem (movilidad / calor / principal) ────────────────────
+        const delBtn = e.target.closest('.re-del-btn');
+        if (delBtn) {
+          const uid     = delBtn.dataset.uid;
+          const dayIdx  = parseInt(delBtn.dataset.day);
+          const section = delBtn.dataset.section;
+          const idx     = parseInt(delBtn.dataset.idx);
+          syncRoutineStateFromDOM(uid);
+          routineStates[uid].dias[dayIdx][section].splice(idx, 1);
+          const renderFn = section === 'movilidad' ? renderMovilidadItems
+                         : section === 'calor'      ? renderCalorItems
+                         :                            renderPrincipalItems;
+          document.getElementById(`re-${section}-${uid}-${dayIdx}`).innerHTML = renderFn(uid, dayIdx);
+          return;
+        }
+
+        // ── Agregar semana de periodización ─────────────────────────────────
+        const addPeriodBtn = e.target.closest('.re-add-period-btn');
+        if (addPeriodBtn) {
+          const uid = addPeriodBtn.dataset.uid;
+          syncRoutineStateFromDOM(uid);
+          const n = routineStates[uid].periodizacion.length + 1;
+          routineStates[uid].periodizacion.push({ semana: n, descripcion: '' });
+          document.getElementById(`re-period-${uid}`).innerHTML = renderPeriodItems(uid);
+          return;
+        }
+
+        // ── Eliminar semana de periodización ─────────────────────────────────
+        const delPeriodBtn = e.target.closest('.re-del-period-btn');
+        if (delPeriodBtn) {
+          const uid = delPeriodBtn.dataset.uid;
+          const idx = parseInt(delPeriodBtn.dataset.idx);
+          syncRoutineStateFromDOM(uid);
+          routineStates[uid].periodizacion.splice(idx, 1);
+          routineStates[uid].periodizacion.forEach((p, i) => { p.semana = i + 1; });
+          document.getElementById(`re-period-${uid}`).innerHTML = renderPeriodItems(uid);
+          return;
+        }
+
+        // ── Toggle unidad reps/seg ────────────────────────────────────────────
+        const toggleUnidad = e.target.closest('.re-toggle-unidad');
+        if (toggleUnidad) {
+          const row  = toggleUnidad.closest('.re-ex-row');
+          const next = row.dataset.unidad === 'reps' ? 'seg' : 'reps';
+          row.dataset.unidad    = next;
+          toggleUnidad.textContent = next;
+          return;
+        }
+
+        // ── Toggle unidad de peso kg/lingotes ─────────────────────────────────
+        const togglePeso = e.target.closest('.re-toggle-peso');
+        if (togglePeso) {
+          const row  = togglePeso.closest('.re-ex-row');
+          const next = row.dataset.pesoUnidad === 'kg' ? 'lingotes' : 'kg';
+          row.dataset.pesoUnidad = next;
+          togglePeso.textContent = next;
+          return;
+        }
+
+        // ── Expandir campos extra del ejercicio ───────────────────────────────
+        const expandBtn = e.target.closest('.re-ex-expand-btn');
+        if (expandBtn) {
+          const row   = expandBtn.closest('.re-ex-row');
+          const extra = row.querySelector('.re-ex-extra');
+          const open  = extra.classList.toggle('re-ex-extra--hidden');
+          expandBtn.textContent = open ? '▼ nota/url' : '▲ menos';
+          return;
+        }
+
+        // ── Guardar rutina ────────────────────────────────────────────────────
+        const reSaveBtn = e.target.closest('.re-save-btn');
+        if (reSaveBtn) { saveRoutine(reSaveBtn.dataset.uid); return; }
+
+        // ── Guardar datos generales ───────────────────────────────────────────
         const saveBtn = e.target.closest('.student-save-btn');
         if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
 
-        const addBtn = e.target.closest('.pesaje-add-btn');
-        if (addBtn) { addPesaje(addBtn.dataset.id); return; }
+        // ── Agregar pesaje ────────────────────────────────────────────────────
+        const addPesajeBtn = e.target.closest('.pesaje-add-btn');
+        if (addPesajeBtn) { addPesaje(addPesajeBtn.dataset.id); return; }
 
-        const delBtn = e.target.closest('.pesaje-del');
-        if (delBtn) { deletePesaje(delBtn.dataset.uid, parseInt(delBtn.dataset.idx)); return; }
+        // ── Eliminar pesaje ───────────────────────────────────────────────────
+        const delPesajeBtn = e.target.closest('.pesaje-del');
+        if (delPesajeBtn) {
+          deletePesaje(delPesajeBtn.dataset.uid, parseInt(delPesajeBtn.dataset.idx));
+          return;
+        }
 
+        // ── Archivar alumno ───────────────────────────────────────────────────
         const archiveBtn = e.target.closest('.student-archive-btn');
         if (archiveBtn) {
           const name = archiveBtn.closest('.student-item').querySelector('.student-name').textContent;
@@ -161,6 +334,7 @@
           return;
         }
 
+        // ── Reactivar alumno ──────────────────────────────────────────────────
         const reactivateBtn = e.target.closest('.student-reactivate-btn');
         if (reactivateBtn) { setArchived(reactivateBtn.dataset.id, false); return; }
       });
@@ -277,9 +451,9 @@
 
     // ── Render de item de acordeón ────────────────────────────────────────────
     function studentItem(u, isArchived = false) {
-      const meta     = u.app_metadata || {};
-      const name     = esc(u.user_metadata?.full_name || u.email);
-      const uid      = esc(u.id);
+      const meta      = u.app_metadata || {};
+      const name      = esc(u.user_metadata?.full_name || u.email);
+      const uid       = esc(u.id);
       const historial = Array.isArray(meta.historialPeso) ? meta.historialPeso : [];
 
       return `
@@ -293,63 +467,79 @@
           </button>
           <div class="student-body" hidden>
 
-            <!-- Campos generales -->
-            <div class="student-fields">
-              <div class="field-group">
-                <label class="field-label" for="field-${uid}-docId">Google Doc</label>
-                <div class="field-input-row">
-                  <input class="field-input" id="field-${uid}-docId" type="text" data-field="docId"
-                    value="${esc(meta.docId || '')}" placeholder="Pegar ID o URL del documento" />
-                  ${meta.docId
-                    ? `<a class="btn-view-doc" href="https://docs.google.com/document/d/${esc(meta.docId)}/edit" target="_blank" rel="noopener noreferrer" title="Ver documento">↗</a>`
-                    : ''}
-                </div>
-              </div>
-              <div class="field-group">
-                <label class="field-label" for="field-${uid}-servicio">Servicio</label>
-                <input class="field-input" id="field-${uid}-servicio" type="text" data-field="servicio"
-                  value="${esc(meta.servicio || '')}" placeholder="Online 3x/semana" />
-              </div>
-              <div class="field-group">
-                <label class="field-label" for="field-${uid}-objetivo">Objetivo</label>
-                <input class="field-input" id="field-${uid}-objetivo" type="text" data-field="objetivo"
-                  value="${esc(meta.objetivo || '')}" placeholder="Ganar masa muscular" />
-              </div>
-              <div class="field-group field-group--full">
-                <label class="field-label" for="field-${uid}-patologias">Patologías / condiciones</label>
-                <input class="field-input" id="field-${uid}-patologias" type="text" data-field="patologias"
-                  value="${esc(meta.patologias || '')}" placeholder="Lumbalgia crónica, HTA..." />
-              </div>
-              <div class="field-group field-group--full">
-                <label class="field-label" for="field-${uid}-notas">Notas internas</label>
-                <input class="field-input" id="field-${uid}-notas" type="text" data-field="notas"
-                  value="${esc(meta.notas || '')}" placeholder="Prefiere entrenar a la mañana..." />
-              </div>
-            </div>
-            <div class="student-item-footer">
-              <button class="btn-save student-save-btn" data-id="${uid}">Guardar</button>
-              ${isArchived
-                ? `<button class="btn-secondary btn-secondary--success student-reactivate-btn" data-id="${uid}">Reactivar</button>`
-                : `<button class="btn-secondary btn-secondary--danger student-archive-btn" data-id="${uid}">Archivar</button>`
-              }
-              <span class="form-msg" id="msg-${uid}"></span>
+            <!-- Sub-tabs -->
+            <div class="student-sub-tabs">
+              <button class="student-tab-btn active" data-uid="${uid}" data-subtab="datos">Datos</button>
+              <button class="student-tab-btn" data-uid="${uid}" data-subtab="rutina">Rutina</button>
+              <button class="student-tab-btn" data-uid="${uid}" data-subtab="pesos">Pesos</button>
             </div>
 
-            <!-- Historial de peso -->
-            <div class="pesajes-section">
-              <div class="pesajes-header">
-                <span class="section-label" style="margin:0">Historial de peso</span>
-                ${historial.length ? `<span class="pesajes-count">${historial.length} registro${historial.length !== 1 ? 's' : ''}</span>` : ''}
+            <!-- Panel: Datos -->
+            <div class="student-tab-panel" data-subtab="datos">
+              <div class="student-fields">
+                <div class="field-group">
+                  <label class="field-label" for="field-${uid}-docId">Google Doc</label>
+                  <div class="field-input-row">
+                    <input class="field-input" id="field-${uid}-docId" type="text" data-field="docId"
+                      value="${esc(meta.docId || '')}" placeholder="Pegar ID o URL del documento" />
+                    ${meta.docId
+                      ? `<a class="btn-view-doc" href="https://docs.google.com/document/d/${esc(meta.docId)}/edit" target="_blank" rel="noopener noreferrer" title="Ver documento">↗</a>`
+                      : ''}
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="field-${uid}-servicio">Servicio</label>
+                  <input class="field-input" id="field-${uid}-servicio" type="text" data-field="servicio"
+                    value="${esc(meta.servicio || '')}" placeholder="Online 3x/semana" />
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="field-${uid}-objetivo">Objetivo</label>
+                  <input class="field-input" id="field-${uid}-objetivo" type="text" data-field="objetivo"
+                    value="${esc(meta.objetivo || '')}" placeholder="Ganar masa muscular" />
+                </div>
+                <div class="field-group field-group--full">
+                  <label class="field-label" for="field-${uid}-patologias">Patologías / condiciones</label>
+                  <input class="field-input" id="field-${uid}-patologias" type="text" data-field="patologias"
+                    value="${esc(meta.patologias || '')}" placeholder="Lumbalgia crónica, HTA..." />
+                </div>
+                <div class="field-group field-group--full">
+                  <label class="field-label" for="field-${uid}-notas">Notas internas</label>
+                  <input class="field-input" id="field-${uid}-notas" type="text" data-field="notas"
+                    value="${esc(meta.notas || '')}" placeholder="Prefiere entrenar a la mañana..." />
+                </div>
               </div>
-              <div class="pesajes-list" id="pesajes-${uid}">
-                ${renderPesajesHTML(uid, historial)}
+              <div class="student-item-footer">
+                <button class="btn-save student-save-btn" data-id="${uid}">Guardar</button>
+                ${isArchived
+                  ? `<button class="btn-secondary btn-secondary--success student-reactivate-btn" data-id="${uid}">Reactivar</button>`
+                  : `<button class="btn-secondary btn-secondary--danger student-archive-btn" data-id="${uid}">Archivar</button>`
+                }
+                <span class="form-msg" id="msg-${uid}"></span>
               </div>
-              <div class="pesaje-add">
-                <input class="field-input field-input--peso" id="peso-input-${uid}"
-                  type="number" placeholder="kg" step="0.1" min="0" />
-                <input class="field-input field-input--fecha" id="fecha-input-${uid}"
-                  type="date" value="${todayISO()}" />
-                <button class="btn-save pesaje-add-btn" data-id="${uid}">+ Registrar</button>
+            </div>
+
+            <!-- Panel: Rutina -->
+            <div class="student-tab-panel" data-subtab="rutina" hidden>
+              <div id="re-panel-${uid}"></div>
+            </div>
+
+            <!-- Panel: Pesos -->
+            <div class="student-tab-panel" data-subtab="pesos" hidden>
+              <div class="pesajes-section">
+                <div class="pesajes-header">
+                  <span class="section-label" style="margin:0">Historial de peso</span>
+                  ${historial.length ? `<span class="pesajes-count">${historial.length} registro${historial.length !== 1 ? 's' : ''}</span>` : ''}
+                </div>
+                <div class="pesajes-list" id="pesajes-${uid}">
+                  ${renderPesajesHTML(uid, historial)}
+                </div>
+                <div class="pesaje-add">
+                  <input class="field-input field-input--peso" id="peso-input-${uid}"
+                    type="number" placeholder="kg" step="0.1" min="0" />
+                  <input class="field-input field-input--fecha" id="fecha-input-${uid}"
+                    type="date" value="${todayISO()}" />
+                  <button class="btn-save pesaje-add-btn" data-id="${uid}">+ Registrar</button>
+                </div>
               </div>
             </div>
 
@@ -412,10 +602,10 @@
 
     // ── Agregar pesaje ────────────────────────────────────────────────────────
     async function addPesaje(uid) {
-      const item      = document.querySelector(`.student-item[data-id="${uid}"]`);
-      const pesoInput = document.getElementById(`peso-input-${uid}`);
+      const item       = document.querySelector(`.student-item[data-id="${uid}"]`);
+      const pesoInput  = document.getElementById(`peso-input-${uid}`);
       const fechaInput = document.getElementById(`fecha-input-${uid}`);
-      const addBtn    = item.querySelector('.pesaje-add-btn');
+      const addBtn     = item.querySelector('.pesaje-add-btn');
 
       const peso  = parseFloat(pesoInput.value);
       const fecha = fechaInput.value;
@@ -434,7 +624,7 @@
         refreshPesajesList(uid, historial);
         pesoInput.value = '';
       } catch (err) {
-        historial.pop(); // revertir
+        historial.pop();
         alert(`Error al guardar: ${err.message}`);
       } finally {
         addBtn.disabled = false;
@@ -444,15 +634,15 @@
 
     // ── Eliminar pesaje ───────────────────────────────────────────────────────
     async function deletePesaje(uid, idx) {
-      const item = document.querySelector(`.student-item[data-id="${uid}"]`);
+      const item     = document.querySelector(`.student-item[data-id="${uid}"]`);
       const historial = JSON.parse(item.dataset.historial || '[]');
-      const removed = historial.splice(idx, 1);
+      const removed  = historial.splice(idx, 1);
 
       try {
         await savePesajes(uid, historial);
         refreshPesajesList(uid, historial);
       } catch (err) {
-        historial.splice(idx, 0, ...removed); // revertir
+        historial.splice(idx, 0, ...removed);
         alert(`Error al eliminar: ${err.message}`);
       }
     }
@@ -508,6 +698,241 @@
       } finally {
         btn.disabled = false;
         btn.textContent = 'Guardar';
+        setTimeout(() => { msg.textContent = ''; msg.className = 'form-msg'; }, 3000);
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── Editor de rutinas ────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+
+    const routineStates = {};
+
+    function emptyRoutine() {
+      return {
+        dias: [{ label: 'Día 1', movilidad: [], calor: [], principal: [] }],
+        periodizacion: [],
+      };
+    }
+
+    // ── Cargar rutina (lazy) ──────────────────────────────────────────────────
+    async function loadRoutineTab(uid) {
+      const panel = document.getElementById(`re-panel-${uid}`);
+      panel.innerHTML = `<div class="loading-state" style="padding:3rem 0"><div class="spinner"></div><span>Cargando rutina...</span></div>`;
+
+      try {
+        const token = await getToken();
+        const res = await fetch(`/.netlify/functions/routine-save?userId=${encodeURIComponent(uid)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 404) {
+          routineStates[uid] = emptyRoutine();
+        } else if (res.ok) {
+          routineStates[uid] = await res.json();
+        } else {
+          throw new Error(await res.text());
+        }
+      } catch (err) {
+        panel.innerHTML = `<p class="re-error">Error al cargar la rutina: ${esc(err.message)}</p>`;
+        return;
+      }
+
+      renderRoutineEditor(uid, 0);
+    }
+
+    // ── Sincronizar estado desde el DOM (antes de modificar estructura) ───────
+    function syncRoutineStateFromDOM(uid) {
+      const routine = routineStates[uid];
+      if (!routine) return;
+
+      routine.dias.forEach((dia, dayIdx) => {
+        dia.movilidad.forEach((item, i) => {
+          const row = document.querySelector(`.re-item-row[data-uid="${uid}"][data-day="${dayIdx}"][data-section="movilidad"][data-idx="${i}"]`);
+          if (!row) return;
+          item.nombre     = row.querySelector('[data-re-field="nombre"]')?.value.trim() || '';
+          item.youtubeUrl = row.querySelector('[data-re-field="youtubeUrl"]')?.value.trim() || null;
+        });
+        dia.calor.forEach((item, i) => {
+          const row = document.querySelector(`.re-item-row[data-uid="${uid}"][data-day="${dayIdx}"][data-section="calor"][data-idx="${i}"]`);
+          if (!row) return;
+          item.nombre = row.querySelector('[data-re-field="nombre"]')?.value.trim() || '';
+        });
+        dia.principal.forEach((item, i) => {
+          const row = document.querySelector(`.re-ex-row[data-uid="${uid}"][data-day="${dayIdx}"][data-idx="${i}"]`);
+          if (!row) return;
+          item.nombre     = row.querySelector('[data-re-field="nombre"]')?.value.trim() || '';
+          item.series     = parseInt(row.querySelector('[data-re-field="series"]')?.value) || null;
+          item.reps       = parseInt(row.querySelector('[data-re-field="reps"]')?.value) || null;
+          const pesoVal   = row.querySelector('[data-re-field="peso"]')?.value;
+          item.peso       = pesoVal !== '' ? parseFloat(pesoVal) || null : null;
+          item.nota       = row.querySelector('[data-re-field="nota"]')?.value.trim() || null;
+          item.youtubeUrl = row.querySelector('[data-re-field="youtubeUrl"]')?.value.trim() || null;
+          item.unidad     = row.dataset.unidad     || 'reps';
+          item.pesoUnidad = row.dataset.pesoUnidad || 'kg';
+        });
+      });
+
+      routine.periodizacion.forEach((item, i) => {
+        const row = document.querySelector(`.re-period-row[data-uid="${uid}"][data-idx="${i}"]`);
+        if (!row) return;
+        item.descripcion = row.querySelector('[data-re-field="descripcion"]')?.value.trim() || '';
+      });
+    }
+
+    // ── Render: editor completo ───────────────────────────────────────────────
+    function renderRoutineEditor(uid, activeDayIdx = 0) {
+      const routine = routineStates[uid];
+      const panel   = document.getElementById(`re-panel-${uid}`);
+
+      const maxDays    = 6;
+      const canAddDay  = routine.dias.length < maxDays;
+      const dayTabsHTML = routine.dias.map((dia, i) =>
+        `<button class="re-day-btn${i === activeDayIdx ? ' active' : ''}" data-uid="${uid}" data-day="${i}">${esc(dia.label)}</button>`
+      ).join('') + (canAddDay
+        ? `<button class="re-add-day-btn" data-uid="${uid}" title="Agregar día">+</button>`
+        : '');
+
+      const dayPanelsHTML = routine.dias.map((dia, i) => `
+        <div class="re-day-panel${i === activeDayIdx ? '' : ' re-day-panel--hidden'}" data-uid="${uid}" data-day="${i}">
+          <div class="re-section">
+            <div class="re-section-label">Movilidad</div>
+            <div id="re-movilidad-${uid}-${i}">${renderMovilidadItems(uid, i)}</div>
+            <button class="re-add-btn re-add-mov-btn" data-uid="${uid}" data-day="${i}">+ Agregar</button>
+          </div>
+          <div class="re-section">
+            <div class="re-section-label">Entrada en calor</div>
+            <div id="re-calor-${uid}-${i}">${renderCalorItems(uid, i)}</div>
+            <button class="re-add-btn re-add-calor-btn" data-uid="${uid}" data-day="${i}">+ Agregar</button>
+          </div>
+          <div class="re-section">
+            <div class="re-section-label">Parte principal</div>
+            <div id="re-principal-${uid}-${i}">${renderPrincipalItems(uid, i)}</div>
+            <button class="re-add-btn re-add-ex-btn" data-uid="${uid}" data-day="${i}">+ Agregar ejercicio</button>
+          </div>
+        </div>`).join('');
+
+      panel.innerHTML = `
+        <div class="re-editor">
+          <div class="re-day-tabs">${dayTabsHTML}</div>
+          ${dayPanelsHTML}
+          <div class="re-section re-period-section">
+            <div class="re-section-label">Periodización</div>
+            <div id="re-period-${uid}">${renderPeriodItems(uid)}</div>
+            <button class="re-add-btn re-add-period-btn" data-uid="${uid}">+ Agregar semana</button>
+          </div>
+          <div class="re-footer">
+            <button class="btn-save re-save-btn" data-uid="${uid}">Guardar rutina</button>
+            <span class="form-msg" id="re-msg-${uid}"></span>
+          </div>
+        </div>`;
+    }
+
+    // ── Render: sección movilidad ─────────────────────────────────────────────
+    function renderMovilidadItems(uid, dayIdx) {
+      const items = routineStates[uid].dias[dayIdx].movilidad;
+      if (!items.length) return `<p class="re-empty">Sin ejercicios de movilidad.</p>`;
+      return items.map((item, i) => `
+        <div class="re-item-row" data-uid="${uid}" data-day="${dayIdx}" data-section="movilidad" data-idx="${i}">
+          <input class="field-input re-field-md" type="text" placeholder="Nombre del ejercicio"
+            value="${esc(item.nombre)}" data-re-field="nombre" />
+          <input class="field-input re-field-lg" type="url" placeholder="URL YouTube (opcional)"
+            value="${esc(item.youtubeUrl || '')}" data-re-field="youtubeUrl" />
+          <button class="re-del-btn" data-uid="${uid}" data-day="${dayIdx}" data-section="movilidad" data-idx="${i}" aria-label="Eliminar">×</button>
+        </div>`).join('');
+    }
+
+    // ── Render: sección calor ─────────────────────────────────────────────────
+    function renderCalorItems(uid, dayIdx) {
+      const items = routineStates[uid].dias[dayIdx].calor;
+      if (!items.length) return `<p class="re-empty">Sin ejercicios de calor.</p>`;
+      return items.map((item, i) => `
+        <div class="re-item-row" data-uid="${uid}" data-day="${dayIdx}" data-section="calor" data-idx="${i}">
+          <input class="field-input re-field-md" type="text" placeholder="Nombre del ejercicio"
+            value="${esc(item.nombre)}" data-re-field="nombre" />
+          <button class="re-del-btn" data-uid="${uid}" data-day="${dayIdx}" data-section="calor" data-idx="${i}" aria-label="Eliminar">×</button>
+        </div>`).join('');
+    }
+
+    // ── Render: sección principal ─────────────────────────────────────────────
+    function renderPrincipalItems(uid, dayIdx) {
+      const items = routineStates[uid].dias[dayIdx].principal;
+      if (!items.length) return `<p class="re-empty">Sin ejercicios.</p>`;
+      return items.map((item, i) => {
+        const hasExtra = item.nota || item.youtubeUrl;
+        return `
+        <div class="re-ex-row" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+          data-unidad="${esc(item.unidad || 'reps')}" data-peso-unidad="${esc(item.pesoUnidad || 'kg')}">
+          <div class="re-ex-main">
+            <input class="field-input re-field-md" type="text" placeholder="Nombre del ejercicio"
+              value="${esc(item.nombre)}" data-re-field="nombre" />
+            <input class="field-input re-field-xs" type="number" placeholder="S" min="1"
+              value="${item.series ?? ''}" data-re-field="series" title="Series" />
+            <span class="re-x">×</span>
+            <input class="field-input re-field-xs" type="number" placeholder="R" min="1"
+              value="${item.reps ?? ''}" data-re-field="reps" title="Repeticiones" />
+            <button class="re-toggle re-toggle-unidad" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+              title="Cambiar unidad">${esc(item.unidad || 'reps')}</button>
+            <input class="field-input re-field-sm" type="number" placeholder="Peso" min="0" step="0.5"
+              value="${item.peso ?? ''}" data-re-field="peso" title="Peso" />
+            <button class="re-toggle re-toggle-peso" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+              title="Cambiar unidad de peso">${esc(item.pesoUnidad || 'kg')}</button>
+            <button class="re-del-btn" data-uid="${uid}" data-day="${dayIdx}" data-section="principal" data-idx="${i}" aria-label="Eliminar">×</button>
+          </div>
+          <div class="re-ex-extra${hasExtra ? '' : ' re-ex-extra--hidden'}">
+            <input class="field-input" type="text" placeholder="Nota (ej: por lado)"
+              value="${esc(item.nota || '')}" data-re-field="nota" style="flex:1" />
+            <input class="field-input" type="url" placeholder="URL YouTube"
+              value="${esc(item.youtubeUrl || '')}" data-re-field="youtubeUrl" style="flex:1" />
+          </div>
+          <button class="re-ex-expand-btn" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}">
+            ${hasExtra ? '▲ menos' : '▼ nota/url'}
+          </button>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Render: periodización ─────────────────────────────────────────────────
+    function renderPeriodItems(uid) {
+      const items = routineStates[uid].periodizacion;
+      if (!items.length) return `<p class="re-empty">Sin periodización definida.</p>`;
+      return items.map((item, i) => `
+        <div class="re-item-row re-period-row" data-uid="${uid}" data-idx="${i}">
+          <span class="re-period-label">Sem ${item.semana}</span>
+          <input class="field-input re-field-md" type="text" placeholder="Descripción de la semana"
+            value="${esc(item.descripcion)}" data-re-field="descripcion" />
+          <button class="re-del-period-btn re-del-btn" data-uid="${uid}" data-idx="${i}" aria-label="Eliminar">×</button>
+        </div>`).join('');
+    }
+
+    // ── Guardar rutina ────────────────────────────────────────────────────────
+    async function saveRoutine(uid) {
+      const btn = document.querySelector(`.re-save-btn[data-uid="${uid}"]`);
+      const msg = document.getElementById(`re-msg-${uid}`);
+
+      syncRoutineStateFromDOM(uid);
+      const routine = routineStates[uid];
+
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      msg.textContent = '';
+      msg.className = 'form-msg';
+
+      try {
+        const token = await getToken();
+        const res = await fetch('/.netlify/functions/routine-save', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid, routine }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        msg.textContent = '✓ Guardado';
+        msg.classList.add('form-msg--ok');
+      } catch (err) {
+        msg.textContent = `Error: ${err.message}`;
+        msg.classList.add('form-msg--err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar rutina';
         setTimeout(() => { msg.textContent = ''; msg.className = 'form-msg'; }, 3000);
       }
     }

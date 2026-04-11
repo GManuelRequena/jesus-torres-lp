@@ -823,6 +823,276 @@ nav {
 .form-msg--ok  { color: #4caf50; }
 .form-msg--err { color: var(--red); }
 
+/* ── SUB-TABS DEL ALUMNO ── */
+.student-sub-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 1.5rem;
+  gap: 0;
+}
+
+.student-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,0.4);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.6rem 1rem 0.55rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.student-tab-btn:hover { color: rgba(255,255,255,0.75); }
+.student-tab-btn.active {
+  color: var(--yellow);
+  border-bottom-color: var(--yellow);
+}
+
+.student-tab-panel { display: block; }
+.student-tab-panel[hidden] { display: none; }
+
+/* ── EDITOR DE RUTINAS ── */
+.re-editor {
+  padding: 1rem 1.5rem 1.25rem;
+}
+
+.re-day-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.re-day-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.55);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.re-day-btn:hover:not(.active) {
+  border-color: rgba(255,255,255,0.25);
+  color: var(--light);
+}
+.re-day-btn.active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--dark);
+}
+
+.re-add-day-btn {
+  background: none;
+  border: 1px dashed rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.35);
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.re-add-day-btn:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+.re-day-panel--hidden { display: none; }
+
+.re-section {
+  margin-bottom: 1.4rem;
+}
+
+.re-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 0.55rem;
+}
+
+.re-period-section {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+.re-item-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.re-ex-row {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  padding: 0.55rem 0.6rem 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.re-ex-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.re-ex-extra {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.re-ex-extra--hidden { display: none; }
+
+.re-ex-expand-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.28);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  margin-top: 0.2rem;
+  display: block;
+  transition: color 0.2s;
+}
+.re-ex-expand-btn:hover { color: rgba(255,255,255,0.6); }
+
+.re-field-xs {
+  width: 3.5rem !important;
+  flex-shrink: 0;
+  text-align: center;
+}
+.re-field-sm {
+  width: 5rem !important;
+  flex-shrink: 0;
+}
+.re-field-md {
+  flex: 1;
+  min-width: 8rem;
+}
+.re-field-lg {
+  flex: 2;
+  min-width: 10rem;
+}
+
+.re-x {
+  color: rgba(255,255,255,0.25);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.re-del-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.28);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.re-del-btn:hover {
+  background: rgba(232,0,58,0.15);
+  border-color: rgba(232,0,58,0.4);
+  color: #ff6b6b;
+}
+
+.re-add-btn {
+  background: none;
+  border: 1px dashed rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.35);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.75rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.2rem;
+}
+.re-add-btn:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+.re-toggle {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.55);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.re-toggle:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--light);
+}
+
+.re-period-label {
+  color: rgba(255,255,255,0.45);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  min-width: 3.5rem;
+  flex-shrink: 0;
+}
+
+.re-empty {
+  color: rgba(255,255,255,0.25);
+  font-size: 0.82rem;
+  font-style: italic;
+  margin: 0.15rem 0 0.5rem;
+}
+
+.re-error {
+  color: #ff6b6b;
+  font-size: 0.88rem;
+  padding: 1.5rem 0;
+}
+
+.re-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 0.5rem;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .login-card { padding: 2rem 1.4rem; }
