@@ -47,12 +47,12 @@
       </div>
       <form id="invite-form" class="invite-form">
         <div class="field-group">
-          <label class="field-label">Nombre completo</label>
-          <input class="field-input" type="text" name="full_name" placeholder="Juan Pérez" />
+          <label class="field-label" for="invite-full-name">Nombre completo</label>
+          <input class="field-input" id="invite-full-name" type="text" name="full_name" placeholder="Juan Pérez" />
         </div>
         <div class="field-group">
-          <label class="field-label">Email</label>
-          <input class="field-input" type="email" name="email" placeholder="juan@email.com" required />
+          <label class="field-label" for="invite-email">Email</label>
+          <input class="field-input" id="invite-email" type="email" name="email" placeholder="juan@email.com" required />
         </div>
         <button type="submit" class="btn-save" id="btn-invite">Enviar invitación</button>
         <span class="form-msg" id="invite-msg"></span>
@@ -129,8 +129,9 @@
       } catch (err) {
         container.innerHTML = `<div class="empty-state" style="padding:3rem 0">
           <div class="empty-title">Error al cargar</div>
-          <p class="empty-text">${err.message}</p>
+          <p class="empty-text" id="load-err-msg"></p>
         </div>`;
+        document.getElementById('load-err-msg').textContent = err.message;
       }
     }
 
@@ -150,33 +151,33 @@
           </div>
           <div class="student-fields">
             <div class="field-group">
-              <label class="field-label">Google Doc ID</label>
-              <input class="field-input" type="text" data-field="docId"
+              <label class="field-label" for="field-${esc(u.id)}-docId">Google Doc ID</label>
+              <input class="field-input" id="field-${esc(u.id)}-docId" type="text" data-field="docId"
                 value="${esc(meta.docId || '')}" placeholder="1abc..." />
             </div>
             <div class="field-group">
-              <label class="field-label">Servicio</label>
-              <input class="field-input" type="text" data-field="servicio"
+              <label class="field-label" for="field-${esc(u.id)}-servicio">Servicio</label>
+              <input class="field-input" id="field-${esc(u.id)}-servicio" type="text" data-field="servicio"
                 value="${esc(meta.servicio || '')}" placeholder="Online 3x/semana" />
             </div>
             <div class="field-group">
-              <label class="field-label">Objetivo</label>
-              <input class="field-input" type="text" data-field="objetivo"
+              <label class="field-label" for="field-${esc(u.id)}-objetivo">Objetivo</label>
+              <input class="field-input" id="field-${esc(u.id)}-objetivo" type="text" data-field="objetivo"
                 value="${esc(meta.objetivo || '')}" placeholder="Ganar masa muscular" />
             </div>
             <div class="field-group">
-              <label class="field-label">Peso (kg)</label>
-              <input class="field-input field-input--short" type="number" data-field="peso"
-                value="${esc(meta.peso || '')}" placeholder="75" />
+              <label class="field-label" for="field-${esc(u.id)}-peso">Peso (kg)</label>
+              <input class="field-input field-input--short" id="field-${esc(u.id)}-peso" type="number" data-field="peso"
+                value="${esc(meta.peso ?? '')}" placeholder="75" />
             </div>
             <div class="field-group field-group--full">
-              <label class="field-label">Patologías / condiciones</label>
-              <input class="field-input" type="text" data-field="patologias"
+              <label class="field-label" for="field-${esc(u.id)}-patologias">Patologías / condiciones</label>
+              <input class="field-input" id="field-${esc(u.id)}-patologias" type="text" data-field="patologias"
                 value="${esc(meta.patologias || '')}" placeholder="Lumbalgia crónica, HTA..." />
             </div>
             <div class="field-group field-group--full">
-              <label class="field-label">Notas internas</label>
-              <input class="field-input" type="text" data-field="notas"
+              <label class="field-label" for="field-${esc(u.id)}-notas">Notas internas</label>
+              <input class="field-input" id="field-${esc(u.id)}-notas" type="text" data-field="notas"
                 value="${esc(meta.notas || '')}" placeholder="Prefiere entrenar a la mañana..." />
             </div>
           </div>
@@ -198,7 +199,10 @@
         payload[input.dataset.field] = input.value.trim() || null;
       });
       // peso como número si está presente
-      if (payload.peso) payload.peso = parseFloat(payload.peso) || null;
+      if (payload.peso !== null) {
+        const parsed = parseFloat(payload.peso);
+        payload.peso = isNaN(parsed) ? null : parsed;
+      }
 
       btn.disabled = true;
       btn.textContent = 'Guardando...';

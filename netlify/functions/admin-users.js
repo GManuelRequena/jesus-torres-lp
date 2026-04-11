@@ -63,6 +63,7 @@ exports.handler = async (event, context) => {
 
   // ── POST: invitar nuevo alumno ────────────────────────────────────────────
   if (event.httpMethod === 'POST') {
+    if (!event.body) return { statusCode: 400, body: 'Body requerido' };
     let payload;
     try { payload = JSON.parse(event.body); } catch {
       return { statusCode: 400, body: 'Invalid JSON' };
@@ -84,6 +85,7 @@ exports.handler = async (event, context) => {
 
   // ── PUT: actualizar app_metadata de un alumno ─────────────────────────────
   if (event.httpMethod === 'PUT') {
+    if (!event.body) return { statusCode: 400, body: 'Body requerido' };
     let payload;
     try { payload = JSON.parse(event.body); } catch {
       return { statusCode: 400, body: 'Invalid JSON' };
