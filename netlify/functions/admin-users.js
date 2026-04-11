@@ -110,7 +110,7 @@ exports.handler = async (event, context) => {
       return { statusCode: 400, body: 'Invalid JSON' };
     }
 
-    const { id, docId, patologias, peso, servicio, objetivo, notas, historialPeso } = payload;
+    const { id, docId, patologias, peso, servicio, objetivo, notas, historialPeso, archivado } = payload;
     if (!id) return { statusCode: 400, body: 'id requerido' };
 
     // Leer app_metadata actual para no pisar roles ni otros campos
@@ -127,7 +127,16 @@ exports.handler = async (event, context) => {
       ...(objetivo      !== undefined && { objetivo }),
       ...(notas         !== undefined && { notas }),
       ...(historialPeso !== undefined && { historialPeso }),
+      ...(archivado     !== undefined && { archivado }),
     };
+
+    // Al archivar/reactivar, sincronizar el rol alumno
+    if (archivado === true) {
+      updatedMeta.roles = (existingMeta.roles || []).filter(r => r !== 'alumno');
+    } else if (archivado === false) {
+      const roles = existingMeta.roles || [];
+      if (!roles.includes('alumno')) updatedMeta.roles = [...roles, 'alumno'];
+    }
 
     const r = await idFetch(identity, `users/${id}`, 'PUT', {
       app_metadata: updatedMeta,

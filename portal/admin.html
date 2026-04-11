@@ -170,11 +170,17 @@
         if (!res.ok) throw new Error(res.status);
         const users = await res.json();
 
-        const students = users.filter(u => (u.app_metadata?.roles || []).includes('alumno'));
+        const students = users.filter(u => {
+          const roles = u.app_metadata?.roles || [];
+          return roles.includes('alumno') || u.app_metadata?.archivado;
+        });
 
-        document.getElementById('admin-count').textContent = students.length ? `(${students.length})` : '';
+        const active   = students.filter(u => !u.app_metadata?.archivado);
+        const archived = students.filter(u =>  u.app_metadata?.archivado);
 
-        if (!students.length) {
+        document.getElementById('admin-count').textContent = active.length ? `(${active.length})` : '';
+
+        if (!active.length && !archived.length) {
           container.innerHTML = `
             <div class="empty-state" style="padding:3rem 0">
               <div class="empty-icon">👥</div>
@@ -184,8 +190,36 @@
           return;
         }
 
-        container.innerHTML = `<div class="student-list">${students.map(u => studentItem(u)).join('')}</div>`;
+        let html = active.length
+          ? `<div class="student-list">${active.map(u => studentItem(u, false)).join('')}</div>`
+          : `<div class="empty-state" style="padding:2rem 0">
+               <div class="empty-icon">👥</div>
+               <div class="empty-title">Sin alumnos activos</div>
+             </div>`;
+
+        if (archived.length) {
+          html += `
+            <div class="archived-toggle">
+              <button class="archived-toggle-btn" id="btn-toggle-archived">
+                Ver archivados (${archived.length})
+                <span class="archived-chevron">›</span>
+              </button>
+            </div>
+            <div class="student-list student-list--archived" id="archived-list" hidden>
+              ${archived.map(u => studentItem(u, true)).join('')}
+            </div>`;
+        }
+
+        container.innerHTML = html;
         initAccordion();
+
+        document.getElementById('btn-toggle-archived')?.addEventListener('click', () => {
+          const list    = document.getElementById('archived-list');
+          const chevron = document.querySelector('.archived-chevron');
+          const isOpen  = !list.hidden;
+          list.hidden   = isOpen;
+          chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+        });
 
         // Limpiar URL de Google Docs al pegar en el campo docId
         container.addEventListener('paste', e => {
@@ -201,14 +235,20 @@
 
         // Delegación de eventos para toda la lista
         container.addEventListener('click', e => {
-          const saveBtn = e.target.closest('.student-save-btn');
+          const saveBtn       = e.target.closest('.student-save-btn');
           if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
 
-          const addBtn = e.target.closest('.pesaje-add-btn');
+          const addBtn        = e.target.closest('.pesaje-add-btn');
           if (addBtn) { addPesaje(addBtn.dataset.id); return; }
 
-          const delBtn = e.target.closest('.pesaje-del');
+          const delBtn        = e.target.closest('.pesaje-del');
           if (delBtn) { deletePesaje(delBtn.dataset.uid, parseInt(delBtn.dataset.idx)); return; }
+
+          const archiveBtn    = e.target.closest('.student-archive-btn');
+          if (archiveBtn) { setArchived(archiveBtn.dataset.id, true); return; }
+
+          const reactivateBtn = e.target.closest('.student-reactivate-btn');
+          if (reactivateBtn) { setArchived(reactivateBtn.dataset.id, false); return; }
         });
 
       } catch (err) {
@@ -221,14 +261,14 @@
     }
 
     // ── Render de item de acordeón ────────────────────────────────────────────
-    function studentItem(u) {
+    function studentItem(u, isArchived = false) {
       const meta     = u.app_metadata || {};
       const name     = esc(u.user_metadata?.full_name || u.email);
       const uid      = esc(u.id);
       const historial = Array.isArray(meta.historialPeso) ? meta.historialPeso : [];
 
       return `
-        <div class="student-item" data-id="${uid}" data-historial="${esc(JSON.stringify(historial))}">
+        <div class="student-item${isArchived ? ' student-item--archived' : ''}" data-id="${uid}" data-historial="${esc(JSON.stringify(historial))}">
           <button class="student-row" aria-expanded="false">
             <div class="student-row-info">
               <span class="student-name">${name}</span>
@@ -268,6 +308,10 @@
             </div>
             <div class="student-item-footer">
               <button class="btn-save student-save-btn" data-id="${uid}">Guardar</button>
+              ${isArchived
+                ? `<button class="btn-reactivate student-reactivate-btn" data-id="${uid}">Reactivar</button>`
+                : `<button class="btn-archive student-archive-btn" data-id="${uid}">Archivar</button>`
+              }
               <span class="form-msg" id="msg-${uid}"></span>
             </div>
 
@@ -390,6 +434,22 @@
       } catch (err) {
         historial.splice(idx, 0, ...removed); // revertir
         alert(`Error al eliminar: ${err.message}`);
+      }
+    }
+
+    // ── Archivar / reactivar alumno ───────────────────────────────────────────
+    async function setArchived(id, value) {
+      try {
+        const token = await getToken();
+        const res = await fetch('/.netlify/functions/admin-users', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, archivado: value }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        await loadStudents();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
       }
     }
 
