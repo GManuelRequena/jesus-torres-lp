@@ -7,15 +7,17 @@
 //   3. ?docId= en querystring (testing directo)
 //   4. ROUTINES_MAP por email (compatibilidad)
 
-const { getStore } = require('@netlify/blobs');
+import { getStore } from '@netlify/blobs';
 
-exports.handler = async (event, context) => {
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+export default async (req, context) => {
+  if (req.method !== 'GET') {
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
   const jwtUser = context.clientContext?.user;
-  const { docId: qsDocId, email: qsEmail } = event.queryStringParameters || {};
+  const params  = new URL(req.url).searchParams;
+  const qsDocId = params.get('docId');
+  const qsEmail = params.get('email');
 
   // ── 1. Netlify Blobs (rutinas cargadas desde el editor del admin) ──────────
   if (jwtUser?.sub) {
@@ -23,11 +25,10 @@ exports.handler = async (event, context) => {
       const store = getStore('routines');
       const blobRoutine = await store.get(jwtUser.sub, { type: 'json' });
       if (blobRoutine !== null) {
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify(blobRoutine), {
+          status: 200,
           headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' },
-          body: JSON.stringify(blobRoutine),
-        };
+        });
       }
     } catch (_) {
       // Si Blobs falla, continuar con el fallback
@@ -38,9 +39,7 @@ exports.handler = async (event, context) => {
 
   let resolvedDocId = jwtUser?.app_metadata?.docId || null;
 
-  if (!resolvedDocId && qsDocId) {
-    resolvedDocId = qsDocId;
-  }
+  if (!resolvedDocId && qsDocId) resolvedDocId = qsDocId;
 
   if (!resolvedDocId) {
     const email = jwtUser?.email || qsEmail;
@@ -49,13 +48,13 @@ exports.handler = async (event, context) => {
         const map = JSON.parse(process.env.ROUTINES_MAP || '{}');
         resolvedDocId = map[email] || null;
       } catch {
-        return { statusCode: 500, body: 'Invalid ROUTINES_MAP config' };
+        return new Response('Invalid ROUTINES_MAP config', { status: 500 });
       }
     }
   }
 
   if (!resolvedDocId) {
-    return { statusCode: 404, body: 'No routine found' };
+    return new Response('No routine found', { status: 404 });
   }
 
   let html;
@@ -64,23 +63,19 @@ exports.handler = async (event, context) => {
       `https://docs.google.com/document/d/${resolvedDocId}/export?format=html`
     );
     if (!res.ok) {
-      return { statusCode: 502, body: `Google Docs error: ${res.status}` };
+      return new Response(`Google Docs error: ${res.status}`, { status: 502 });
     }
     html = await res.text();
   } catch (err) {
-    return { statusCode: 502, body: `Fetch failed: ${err.message}` };
+    return new Response(`Fetch failed: ${err.message}`, { status: 502 });
   }
 
   const routine = parseRoutine(html);
 
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'private, no-store',
-    },
-    body: JSON.stringify(routine),
-  };
+  return new Response(JSON.stringify(routine), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' },
+  });
 };
 
 // ── HTML → plain text ─────────────────────────────────────────────────────────
@@ -126,56 +121,41 @@ function parseRoutine(html) {
   let diaIdx  = -1;
 
   for (const line of lines) {
-    // ── Section headings ───────────────────────────────────────────────────
     if (/==\s*MOVILIDAD/i.test(line))        { section = 'movilidad';  diaIdx = -1; continue; }
     if (/==\s*ENTRADA/i.test(line))          { section = 'calor';      diaIdx = -1; continue; }
     if (/==\s*PARTE\s+PRINCIPAL/i.test(line)){ section = 'principal';  diaIdx = -1; continue; }
     if (/==\s*PERIODIZACI/i.test(line)) {
       section = 'periodizacion';
-      // Periodización may be inline on the same line as the heading
       extractPeriodLines(line, periodizacion);
       continue;
     }
 
-    // ── Day headings ───────────────────────────────────────────────────────
     const diaMatch = /^d[ií]a\s*(\d+)/i.exec(line);
-    if (diaMatch) {
-      diaIdx = parseInt(diaMatch[1], 10) - 1;
-      continue;
-    }
+    if (diaMatch) { diaIdx = parseInt(diaMatch[1], 10) - 1; continue; }
 
     if (!section) continue;
 
-    // ── Periodización (standalone lines) ──────────────────────────────────
-    if (section === 'periodizacion') {
-      extractPeriodLines(line, periodizacion);
-      continue;
-    }
+    if (section === 'periodizacion') { extractPeriodLines(line, periodizacion); continue; }
 
     if (diaIdx < 0 || diaIdx > 2) continue;
     const dia = dias[diaIdx];
 
-    // ── Movilidad ─────────────────────────────────────────────────────────
     if (section === 'movilidad') {
-      const clean    = line.replace(/^[-•]\s*/, '');
-      const ytMatch  = /(https?:\/\/\S+)/.exec(clean);
-      const nombre   = clean.replace(ytMatch ? ytMatch[0] : '', '').replace(/:\s*$/, '').trim();
-      if (nombre) {
-        dia.movilidad.push({ nombre, youtubeUrl: ytMatch ? ytMatch[1] : null });
-      }
+      const clean   = line.replace(/^[-•]\s*/, '');
+      const ytMatch = /(https?:\/\/\S+)/.exec(clean);
+      const nombre  = clean.replace(ytMatch ? ytMatch[0] : '', '').replace(/:\s*$/, '').trim();
+      if (nombre) dia.movilidad.push({ nombre, youtubeUrl: ytMatch ? ytMatch[1] : null });
       continue;
     }
 
-    // ── Entrada en calor ──────────────────────────────────────────────────
     if (section === 'calor') {
       const nombre = line.replace(/^[-•]\s*/, '').trim();
       if (nombre) dia.calor.push({ nombre });
       continue;
     }
 
-    // ── Parte principal ───────────────────────────────────────────────────
     if (section === 'principal') {
-      if (!line.includes('|')) continue; // skip non-exercise lines
+      if (!line.includes('|')) continue;
       const ex = parsePrincipalLine(line, dia.principal.length + 1);
       if (ex) dia.principal.push(ex);
     }
@@ -185,27 +165,18 @@ function parseRoutine(html) {
 }
 
 // ── Parte principal: "Nombre | NxN | peso" ───────────────────────────────────
-// Parts are separated by | in any order.
 
 function parsePrincipalLine(line, num) {
-  // Strip leading "N. " if present (Google Docs may preserve or strip numbering)
-  const clean = line.replace(/^\d+\.\s*/, '').trim();
-  const parts = clean.split('|').map(p => p.trim()).filter(Boolean);
+  const clean  = line.replace(/^\d+\.\s*/, '').trim();
+  const parts  = clean.split('|').map(p => p.trim()).filter(Boolean);
   if (parts.length < 2) return null;
 
-  // Identify each part by content
   const serepRe  = /^(\d+)\s*[xX×]\s*(\d+)(["""]?)\s*(por\s+lado|pasos)?$/i;
   const pesoRe   = /^(\d+(?:[.,]\d+)?)\s*(kg|lingotes?)$/i;
   const ytRe     = /^https?:\/\/\S+/;
 
-  let nombre     = null;
-  let series     = null;
-  let reps       = null;
-  let unidad     = 'reps';
-  let nota       = null;
-  let peso       = null;
-  let pesoUnidad = null;
-  let youtubeUrl = null;
+  let nombre = null, series = null, reps = null, unidad = 'reps';
+  let nota = null, peso = null, pesoUnidad = null, youtubeUrl = null;
 
   for (const part of parts) {
     if (ytRe.test(part)) { youtubeUrl = part; continue; }
@@ -231,16 +202,12 @@ function parsePrincipalLine(line, num) {
 }
 
 // ── Periodización ─────────────────────────────────────────────────────────────
-// Handles "Sem 1: descripción" lines, or all on one line.
 
 function extractPeriodLines(text, output) {
-  // Split on "Sem N:" boundaries
   const re = /sem(?:ana)?\s+(\d+)\s*:\s*([^]*?)(?=\s*sem(?:ana)?\s+\d+\s*:|$)/gi;
   let match;
   while ((match = re.exec(text)) !== null) {
     const desc = match[2].trim();
-    if (desc) {
-      output.push({ semana: parseInt(match[1], 10), descripcion: desc });
-    }
+    if (desc) output.push({ semana: parseInt(match[1], 10), descripcion: desc });
   }
 }
