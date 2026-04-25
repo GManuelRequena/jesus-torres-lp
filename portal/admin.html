@@ -726,7 +726,7 @@
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.status === 404) {
-          routineStates[uid] = emptyRoutine();
+          routineStates[uid] = { ...emptyRoutine(), _isNew: true };
         } else if (res.ok) {
           routineStates[uid] = await res.json();
         } else {
@@ -820,6 +820,7 @@
             <div id="re-period-${uid}">${renderPeriodItems(uid)}</div>
             <button class="re-add-btn re-add-period-btn" data-uid="${uid}">+ Agregar semana</button>
           </div>
+          ${routine._isNew ? `<p class="re-new-hint">Este alumno no tiene rutina guardada aún. Completá el editor y presioná Guardar.</p>` : ''}
           <div class="re-footer">
             <button class="btn-save re-save-btn" data-uid="${uid}">Guardar rutina</button>
             <span class="form-msg" id="re-msg-${uid}"></span>

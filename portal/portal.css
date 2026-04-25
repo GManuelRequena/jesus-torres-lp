@@ -1102,6 +1102,13 @@ nav {
   padding: 1.5rem 0;
 }
 
+.re-new-hint {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+  margin: 0 0 0.75rem;
+}
+
 .re-footer {
   display: flex;
   align-items: center;
