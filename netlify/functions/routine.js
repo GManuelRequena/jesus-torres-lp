@@ -1,35 +1,40 @@
-// Netlify Function: GET /.netlify/functions/routine?docId=<googleDocId>
-// Fetches the exported HTML of a Google Doc written in the standard template
-// and returns a parsed routine JSON.
+// Netlify Function: GET /.netlify/functions/routine
+// Devuelve la rutina del alumno autenticado como JSON.
 //
-// Expected doc format:
-//   == MOVILIDAD ARTICULAR ==
-//   DÍA 1
-//   - Nombre: https://youtube.com/...
-//   ...
-//   == ENTRADA EN CALOR ==
-//   DÍA 1
-//   - Ejercicio
-//   ...
-//   == PARTE PRINCIPAL ==
-//   DÍA 1
-//   1. Nombre | NxN | peso
-//   ...
-//   == PERIODIZACIÓN ==
-//   Sem 1: descripción
-//   ...
+// Prioridad de resolución:
+//   1. Netlify Blobs por jwtUser.sub (editor visual del admin)
+//   2. app_metadata.docId del JWT → Google Docs (legacy)
+//   3. ?docId= en querystring (testing directo)
+//   4. ROUTINES_MAP por email (compatibilidad)
+
+const { getStore } = require('@netlify/blobs');
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // Resolve docId — priority:
-  //   1. app_metadata.docId del JWT (alumno autenticado)
-  //   2. ?docId= en querystring (testing directo)
-  //   3. ROUTINES_MAP lookup por email del JWT o ?email= (compatibilidad)
   const jwtUser = context.clientContext?.user;
   const { docId: qsDocId, email: qsEmail } = event.queryStringParameters || {};
+
+  // ── 1. Netlify Blobs (rutinas cargadas desde el editor del admin) ──────────
+  if (jwtUser?.sub) {
+    try {
+      const store = getStore('routines');
+      const blobRoutine = await store.get(jwtUser.sub, { type: 'json' });
+      if (blobRoutine !== null) {
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' },
+          body: JSON.stringify(blobRoutine),
+        };
+      }
+    } catch (_) {
+      // Si Blobs falla, continuar con el fallback
+    }
+  }
+
+  // ── 2-4. Fallback: Google Docs (alumnos legacy con docId) ─────────────────
 
   let resolvedDocId = jwtUser?.app_metadata?.docId || null;
 
