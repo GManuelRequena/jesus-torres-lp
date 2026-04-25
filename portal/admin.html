@@ -309,6 +309,9 @@
         const reSaveBtn = e.target.closest('.re-save-btn');
         if (reSaveBtn) { saveRoutine(reSaveBtn.dataset.uid); return; }
 
+        const reClearBtn = e.target.closest('.re-clear-btn');
+        if (reClearBtn) { clearRoutine(reClearBtn.dataset.uid); return; }
+
         // ── Guardar datos generales ───────────────────────────────────────────
         const saveBtn = e.target.closest('.student-save-btn');
         if (saveBtn) { saveStudent(saveBtn.dataset.id); return; }
@@ -835,6 +838,7 @@
           ${routine._isNew ? `<p class="re-new-hint">Este alumno no tiene rutina guardada aún. Completá el editor y presioná Guardar.</p>` : ''}
           <div class="re-footer">
             <button class="btn-save re-save-btn" data-uid="${uid}">Guardar rutina</button>
+            ${!routine._isNew ? `<button class="btn-clear re-clear-btn" data-uid="${uid}" title="Borra la rutina del editor y vuelve al Google Doc si tiene uno asignado">Limpiar editor</button>` : ''}
             <span class="form-msg" id="re-msg-${uid}"></span>
           </div>
         </div>`;
@@ -971,6 +975,25 @@
         btn.disabled = false;
         btn.textContent = 'Guardar rutina';
         setTimeout(() => { msg.textContent = ''; msg.className = 'form-msg'; }, 3000);
+      }
+    }
+
+    // ── Limpiar rutina del editor (borra Blob → vuelve al Google Doc) ────────
+    async function clearRoutine(uid) {
+      if (!confirm('¿Borrar la rutina del editor? El alumno volverá a ver su Google Doc si tiene uno asignado.')) return;
+
+      const panel = document.getElementById(`re-panel-${uid}`);
+      try {
+        const token = await getToken();
+        const res = await fetch(`/.netlify/functions/routine-save?userId=${encodeURIComponent(uid)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        delete routineStates[uid];
+        loadRoutineTab(uid);
+      } catch (err) {
+        panel.innerHTML = `<p class="re-error">Error al limpiar: ${esc(err.message)}</p>`;
       }
     }
 

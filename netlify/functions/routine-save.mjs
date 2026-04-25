@@ -56,5 +56,14 @@ export default async (req, context) => {
     return new Response('{}', { status: 200, headers: JSON_HEADERS });
   }
 
+  // ── DELETE: borrar rutina del editor (vuelve a caer al Google Doc) ──────────
+  if (req.method === 'DELETE') {
+    const userId = new URL(req.url).searchParams.get('userId');
+    if (!userId) return new Response('userId requerido', { status: 400 });
+
+    await store.delete(userId);
+    return new Response('{}', { status: 200, headers: JSON_HEADERS });
+  }
+
   return new Response('Method Not Allowed', { status: 405 });
 };
