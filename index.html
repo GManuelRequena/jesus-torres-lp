@@ -423,7 +423,10 @@
     // Netlify Identity — maneja tokens de invite/recovery que aterrizan en la raíz
     if (window.netlifyIdentity) {
       netlifyIdentity.on('login', () => {
-        window.location.href = '/portal/dashboard.html';
+        // Solo redirigir en flujos de invite/recovery que aterrizan en la raíz
+        if (window.location.hash.match(/invite_token|recovery_token|confirmation_token/)) {
+          window.location.href = '/portal/dashboard.html';
+        }
       });
       // No llamar init() — el widget se auto-inicializa al cargar el script
       // y abre automáticamente el formulario de invite sin ser reseteado
