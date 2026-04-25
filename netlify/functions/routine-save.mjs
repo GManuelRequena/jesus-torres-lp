@@ -2,18 +2,29 @@ import { getStore } from '@netlify/blobs';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
 
-function isAdmin(context) {
-  const roles = context.clientContext?.user?.app_metadata?.roles || [];
+// En Functions v2, context.clientContext puede no estar disponible.
+// Fallback: decodificar el payload del JWT del header Authorization.
+function getUser(req, context) {
+  if (context.clientContext?.user) return context.clientContext.user;
+  const auth = req.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(auth.slice(7).split('.')[1], 'base64url').toString());
+    return payload?.sub ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function isAdmin(user) {
+  const roles = user?.app_metadata?.roles || [];
   return roles.includes('admin');
 }
 
 export default async (req, context) => {
-  if (!context.clientContext?.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-  if (!isAdmin(context)) {
-    return new Response('Forbidden', { status: 403 });
-  }
+  const user = getUser(req, context);
+  if (!user) return new Response('Unauthorized', { status: 401 });
+  if (!isAdmin(user)) return new Response('Forbidden', { status: 403 });
 
   const store = getStore('routines');
 

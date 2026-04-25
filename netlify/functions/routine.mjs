@@ -9,12 +9,26 @@
 
 import { getStore } from '@netlify/blobs';
 
+// En Functions v2, context.clientContext puede no estar disponible.
+// Fallback: decodificar el payload del JWT del header Authorization.
+function getUser(req, context) {
+  if (context.clientContext?.user) return context.clientContext.user;
+  const auth = req.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(auth.slice(7).split('.')[1], 'base64url').toString());
+    return payload?.sub ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async (req, context) => {
   if (req.method !== 'GET') {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
-  const jwtUser = context.clientContext?.user;
+  const jwtUser = getUser(req, context);
   const params  = new URL(req.url).searchParams;
   const qsDocId = params.get('docId');
   const qsEmail = params.get('email');
