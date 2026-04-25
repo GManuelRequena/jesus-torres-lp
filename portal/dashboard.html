@@ -165,13 +165,18 @@
 
     function renderMovilidad(items) {
       if (!items.length) return '';
-      const cards = items.map(ex => `
+      const cards = items.map(ex => {
+        const serRep = ex.series ? `<span class="badge badge--serep">${ex.series}×${ex.reps ?? '?'}${ex.unidad === 'seg' ? '"' : ''}</span>` : '';
+        const peso   = ex.peso !== null && ex.peso !== undefined ? `<span class="badge badge--peso">${ex.peso}${ex.pesoUnidad === 'lingotes' ? ' ling.' : 'kg'}</span>` : '';
+        return `
         <div class="ex-card ex-card--movilidad">
           <div class="ex-movilidad-nombre">${esc(ex.nombre)}</div>
+          ${serRep || peso ? `<div class="ex-badges">${serRep}${peso}</div>` : ''}
           ${ex.youtubeUrl?.startsWith('https://')
             ? `<a class="btn-video" href="${esc(ex.youtubeUrl)}" target="_blank" rel="noopener noreferrer">▶ VER VIDEO</a>`
             : ''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
       return `
         <div class="routine-section">
           <div class="section-label">Movilidad Articular</div>
@@ -181,9 +186,10 @@
 
     function renderCalor(items) {
       if (!items.length) return '';
-      const pills = items.map(ex =>
-        `<span class="calor-pill">${esc(ex.nombre)}</span>`
-      ).join('');
+      const pills = items.map(ex => {
+        const serRep = ex.series ? ` <span class="calor-serep">${ex.series}×${ex.reps ?? '?'}${ex.unidad === 'seg' ? '"' : ''}${ex.peso !== null && ex.peso !== undefined ? ` · ${ex.peso}${ex.pesoUnidad === 'lingotes' ? ' ling.' : 'kg'}` : ''}</span>` : '';
+        return `<span class="calor-pill">${esc(ex.nombre)}${serRep}</span>`;
+      }).join('');
       return `
         <div class="routine-section">
           <div class="section-label">Entrada en Calor <span class="section-sub">2×8</span></div>

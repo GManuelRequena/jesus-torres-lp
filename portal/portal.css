@@ -415,6 +415,11 @@ nav {
   border-radius: 2px;
   padding: 5px 10px;
 }
+.calor-serep {
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 0.25rem;
+}
 
 /* ── PARTE PRINCIPAL ── */
 .ex-list--principal { gap: 0.4rem; }

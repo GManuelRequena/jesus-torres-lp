@@ -205,7 +205,7 @@
           const uid    = addMovBtn.dataset.uid;
           const dayIdx = parseInt(addMovBtn.dataset.day);
           syncRoutineStateFromDOM(uid);
-          routineStates[uid].dias[dayIdx].movilidad.push({ nombre: '', youtubeUrl: null });
+          routineStates[uid].dias[dayIdx].movilidad.push({ nombre: '', youtubeUrl: null, series: null, reps: null, unidad: 'reps', peso: null, pesoUnidad: 'kg' });
           document.getElementById(`re-movilidad-${uid}-${dayIdx}`).innerHTML = renderMovilidadItems(uid, dayIdx);
           return;
         }
@@ -216,7 +216,7 @@
           const uid    = addCalorBtn.dataset.uid;
           const dayIdx = parseInt(addCalorBtn.dataset.day);
           syncRoutineStateFromDOM(uid);
-          routineStates[uid].dias[dayIdx].calor.push({ nombre: '' });
+          routineStates[uid].dias[dayIdx].calor.push({ nombre: '', series: null, reps: null, unidad: 'reps', peso: null, pesoUnidad: 'kg' });
           document.getElementById(`re-calor-${uid}-${dayIdx}`).innerHTML = renderCalorItems(uid, dayIdx);
           return;
         }
@@ -278,7 +278,7 @@
         // ── Toggle unidad reps/seg ────────────────────────────────────────────
         const toggleUnidad = e.target.closest('.re-toggle-unidad');
         if (toggleUnidad) {
-          const row  = toggleUnidad.closest('.re-ex-row');
+          const row  = toggleUnidad.closest('.re-ex-row, .re-item-row');
           const next = row.dataset.unidad === 'reps' ? 'seg' : 'reps';
           row.dataset.unidad    = next;
           toggleUnidad.textContent = next;
@@ -288,7 +288,7 @@
         // ── Toggle unidad de peso kg/lingotes ─────────────────────────────────
         const togglePeso = e.target.closest('.re-toggle-peso');
         if (togglePeso) {
-          const row  = togglePeso.closest('.re-ex-row');
+          const row  = togglePeso.closest('.re-ex-row, .re-item-row');
           const next = row.dataset.pesoUnidad === 'kg' ? 'lingotes' : 'kg';
           row.dataset.pesoUnidad = next;
           togglePeso.textContent = next;
@@ -751,11 +751,23 @@
           if (!row) return;
           item.nombre     = row.querySelector('[data-re-field="nombre"]')?.value.trim() || '';
           item.youtubeUrl = row.querySelector('[data-re-field="youtubeUrl"]')?.value.trim() || null;
+          item.series     = parseInt(row.querySelector('[data-re-field="series"]')?.value) || null;
+          item.reps       = parseInt(row.querySelector('[data-re-field="reps"]')?.value) || null;
+          item.unidad     = row.dataset.unidad     || 'reps';
+          const pesoVal   = row.querySelector('[data-re-field="peso"]')?.value;
+          item.peso       = pesoVal !== '' ? parseFloat(pesoVal) || null : null;
+          item.pesoUnidad = row.dataset.pesoUnidad || 'kg';
         });
         dia.calor.forEach((item, i) => {
           const row = document.querySelector(`.re-item-row[data-uid="${uid}"][data-day="${dayIdx}"][data-section="calor"][data-idx="${i}"]`);
           if (!row) return;
-          item.nombre = row.querySelector('[data-re-field="nombre"]')?.value.trim() || '';
+          item.nombre     = row.querySelector('[data-re-field="nombre"]')?.value.trim() || '';
+          item.series     = parseInt(row.querySelector('[data-re-field="series"]')?.value) || null;
+          item.reps       = parseInt(row.querySelector('[data-re-field="reps"]')?.value) || null;
+          item.unidad     = row.dataset.unidad     || 'reps';
+          const pesoVal   = row.querySelector('[data-re-field="peso"]')?.value;
+          item.peso       = pesoVal !== '' ? parseFloat(pesoVal) || null : null;
+          item.pesoUnidad = row.dataset.pesoUnidad || 'kg';
         });
         dia.principal.forEach((item, i) => {
           const row = document.querySelector(`.re-ex-row[data-uid="${uid}"][data-day="${dayIdx}"][data-idx="${i}"]`);
@@ -833,9 +845,21 @@
       const items = routineStates[uid].dias[dayIdx].movilidad;
       if (!items.length) return `<p class="re-empty">Sin ejercicios de movilidad.</p>`;
       return items.map((item, i) => `
-        <div class="re-item-row" data-uid="${uid}" data-day="${dayIdx}" data-section="movilidad" data-idx="${i}">
+        <div class="re-item-row" data-uid="${uid}" data-day="${dayIdx}" data-section="movilidad" data-idx="${i}"
+          data-unidad="${esc(item.unidad || 'reps')}" data-peso-unidad="${esc(item.pesoUnidad || 'kg')}">
           <input class="field-input re-field-md" type="text" placeholder="Nombre del ejercicio"
             value="${esc(item.nombre)}" data-re-field="nombre" />
+          <input class="field-input re-field-xs" type="number" placeholder="S" min="1"
+            value="${item.series ?? ''}" data-re-field="series" title="Series" />
+          <span class="re-x">×</span>
+          <input class="field-input re-field-xs" type="number" placeholder="R" min="1"
+            value="${item.reps ?? ''}" data-re-field="reps" title="Repeticiones" />
+          <button class="re-toggle re-toggle-unidad" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+            title="Cambiar unidad">${esc(item.unidad || 'reps')}</button>
+          <input class="field-input re-field-sm" type="number" placeholder="Peso" min="0" step="0.5"
+            value="${item.peso ?? ''}" data-re-field="peso" title="Peso" />
+          <button class="re-toggle re-toggle-peso" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+            title="Cambiar unidad de peso">${esc(item.pesoUnidad || 'kg')}</button>
           <input class="field-input re-field-lg" type="url" placeholder="URL YouTube (opcional)"
             value="${esc(item.youtubeUrl || '')}" data-re-field="youtubeUrl" />
           <button class="re-del-btn" data-uid="${uid}" data-day="${dayIdx}" data-section="movilidad" data-idx="${i}" aria-label="Eliminar">×</button>
@@ -847,9 +871,21 @@
       const items = routineStates[uid].dias[dayIdx].calor;
       if (!items.length) return `<p class="re-empty">Sin ejercicios de calor.</p>`;
       return items.map((item, i) => `
-        <div class="re-item-row" data-uid="${uid}" data-day="${dayIdx}" data-section="calor" data-idx="${i}">
+        <div class="re-item-row" data-uid="${uid}" data-day="${dayIdx}" data-section="calor" data-idx="${i}"
+          data-unidad="${esc(item.unidad || 'reps')}" data-peso-unidad="${esc(item.pesoUnidad || 'kg')}">
           <input class="field-input re-field-md" type="text" placeholder="Nombre del ejercicio"
             value="${esc(item.nombre)}" data-re-field="nombre" />
+          <input class="field-input re-field-xs" type="number" placeholder="S" min="1"
+            value="${item.series ?? ''}" data-re-field="series" title="Series" />
+          <span class="re-x">×</span>
+          <input class="field-input re-field-xs" type="number" placeholder="R" min="1"
+            value="${item.reps ?? ''}" data-re-field="reps" title="Repeticiones" />
+          <button class="re-toggle re-toggle-unidad" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+            title="Cambiar unidad">${esc(item.unidad || 'reps')}</button>
+          <input class="field-input re-field-sm" type="number" placeholder="Peso" min="0" step="0.5"
+            value="${item.peso ?? ''}" data-re-field="peso" title="Peso" />
+          <button class="re-toggle re-toggle-peso" data-uid="${uid}" data-day="${dayIdx}" data-idx="${i}"
+            title="Cambiar unidad de peso">${esc(item.pesoUnidad || 'kg')}</button>
           <button class="re-del-btn" data-uid="${uid}" data-day="${dayIdx}" data-section="calor" data-idx="${i}" aria-label="Eliminar">×</button>
         </div>`).join('');
     }
