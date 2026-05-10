@@ -43,8 +43,6 @@
   <script>
     const WA_NUMBER = '5492657234696'; // reemplazar con número real
 
-    netlifyIdentity.init();
-
     netlifyIdentity.on('init', user => {
       if (!user) {
         window.location.href = '/portal/';

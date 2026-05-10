@@ -8,14 +8,31 @@
 
 const JSON_HEADERS = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
 
-function getIdentity(context) {
-  const cc = context.clientContext;
-  if (!cc?.identity?.url || !cc?.identity?.token) return null;
-  return { url: cc.identity.url, token: cc.identity.token };
+function parseJWT(authHeader) {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    return JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64url').toString());
+  } catch { return null; }
 }
 
-function isAdmin(context) {
-  const roles = context.clientContext?.user?.app_metadata?.roles || [];
+function getUser(event, context) {
+  return context.clientContext?.user || parseJWT(event.headers['authorization']);
+}
+
+function getIdentity(context, event) {
+  const cc = context.clientContext;
+  if (cc?.identity?.url && cc?.identity?.token) {
+    return { url: cc.identity.url, token: cc.identity.token };
+  }
+  // Fallback para local (netlify dev): usar API token del CLI + URL del sitio
+  const apiToken = process.env.NETLIFY_API_ACCESS_TOKEN;
+  const siteUrl  = process.env.URL || 'https://entrenadorjesustorres.netlify.app';
+  if (apiToken) return { url: `${siteUrl}/.netlify/identity`, token: apiToken };
+  return null;
+}
+
+function isAdmin(user) {
+  const roles = user?.app_metadata?.roles || [];
   return roles.includes('admin');
 }
 
@@ -34,14 +51,11 @@ async function idFetch(identity, path, method = 'GET', body = null) {
 }
 
 exports.handler = async (event, context) => {
-  if (!context.clientContext?.user) {
-    return { statusCode: 401, body: 'Unauthorized' };
-  }
-  if (!isAdmin(context)) {
-    return { statusCode: 403, body: 'Forbidden' };
-  }
+  const user = getUser(event, context);
+  if (!user) return { statusCode: 401, body: 'Unauthorized' };
+  if (!isAdmin(user)) return { statusCode: 403, body: 'Forbidden' };
 
-  const identity = getIdentity(context);
+  const identity = getIdentity(context, event);
   if (!identity) {
     return { statusCode: 503, body: 'Identity service unavailable' };
   }
